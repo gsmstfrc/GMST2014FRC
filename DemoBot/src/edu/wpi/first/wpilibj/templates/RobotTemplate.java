@@ -7,6 +7,8 @@ import edu.wpi.first.wpilibj.Victor;
 import edu.wpi.first.wpilibj.Watchdog;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.networktables.NetworkTable;
+import edu.wpi.first.wpilibj.tables.ITable;
+import edu.wpi.first.wpilibj.tables.ITableListener;
 
 public class RobotTemplate extends SimpleRobot
 {
@@ -79,35 +81,42 @@ public class RobotTemplate extends SimpleRobot
     {
     }
 
-    public class SmartDashboardUpdater implements Runnable
+    public class SmartDashboardUpdater implements Runnable, ITableListener
     {
 
         boolean saveDashboardValues = false;
+        NetworkTable sd;
         public SmartDashboardUpdater()
         {
+        }
+        
+        public void valueChanged(ITable source, String key, Object value, boolean isNew) 
+        {
+            if(key.equalsIgnoreCase("saveDashboardValues"))
+            {
+                Boolean update;
+                update = ((Boolean) value);
+                if(!update.booleanValue())
+                    return;
+                sd.putBoolean("saveDashboardValues", false);
+                retrieveDashboardValues();
+            }
+        }
+        
+        public void retrieveDashboardValues()
+        {
+            //bla bla bla get values.
         }
 
         public void run()
         {
             NetworkTable.setTeam(3318);
-            NetworkTable sd = NetworkTable.getTable("SmartDashboard");
-            
+            sd = NetworkTable.getTable("SmartDashboard");
+            sd.addTableListener("saveDashboardValues",this, true); //True is for immedeatly notify.
             
             while (true)
             {
-//                if (!(t.get() > 5)){} //Empty line.
-//                else
-//                {
-                    maxXSpeed = sd.getNumber("maxXSpeed", .1);
-                    maxYSpeed = sd.getNumber("maxYSpeed", .4);
-                    maxTSpeed = sd.getNumber("maxTSpeed", .4);
-                    
-                    saveDashboardValues = SmartDashboard.getBoolean("saveDashboardValues",false);
-//                }
-                if(saveDashboardValues)
-                {
-                    
-                }
+                //Do some code that manages updating network table stuff.
             }
 
         }
