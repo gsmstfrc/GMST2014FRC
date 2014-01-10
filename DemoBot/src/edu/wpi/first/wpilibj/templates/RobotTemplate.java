@@ -95,15 +95,15 @@ public class RobotTemplate extends SimpleRobot
             
             while (true)
             {
-                if (!(t.get() > 5)){} //Empty line.
-                else
-                {
+//                if (!(t.get() > 5)){} //Empty line.
+//                else
+//                {
                     maxXSpeed = sd.getNumber("maxXSpeed", .1);
                     maxYSpeed = sd.getNumber("maxYSpeed", .4);
                     maxTSpeed = sd.getNumber("maxTSpeed", .4);
                     
                     saveDashboardValues = SmartDashboard.getBoolean("saveDashboardValues",false);
-                }
+//                }
                 if(saveDashboardValues)
                 {
                     
