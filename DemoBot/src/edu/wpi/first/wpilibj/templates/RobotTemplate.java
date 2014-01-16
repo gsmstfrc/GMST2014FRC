@@ -24,15 +24,20 @@ public class RobotTemplate extends SimpleRobot
     Victor backRight;
     Watchdog watchdog;
 
+	// Test arm Controls
+	Victor intakeVictor;
+
     public RobotTemplate()
     {
         joystick = new Joystick(1);
 
-        frontLeft = new Victor(4);
-        frontRight = new Victor(1);
-        backLeft = new Victor(3);
+        frontLeft = new Victor(3);
+        frontRight = new Victor(9);
+        backLeft = new Victor(4);
         backRight = new Victor(2);
         watchdog = Watchdog.getInstance();
+
+		intakeVictor = new Victor(8);
     }
 
     /**
@@ -67,6 +72,17 @@ public class RobotTemplate extends SimpleRobot
 
         backLeft.set(-y + x);
         frontLeft.set(-y + x);
+
+		boolean armUp = joystick.getRawButton(5);
+		boolean armDown = joystick.getRawButton(3);
+		double power = joystick.getThrottle()*0.5+1.0;
+
+		if (armUp)
+			intakeVictor.set(power);
+		else if (armDown)
+			intakeVictor.set(-power);
+		else
+			intakeVictor.set(0.0);
     }
 
     //@Override not supported
