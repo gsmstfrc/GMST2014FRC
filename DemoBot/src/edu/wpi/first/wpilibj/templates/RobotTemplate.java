@@ -24,8 +24,8 @@ public class RobotTemplate extends SimpleRobot
     Victor backRight;
     Watchdog watchdog;
 
-	// Test arm Controls
-	Victor intakeVictor;
+    // Test arm Controls
+    Victor intakeVictor;
 
     public RobotTemplate()
     {
@@ -35,10 +35,10 @@ public class RobotTemplate extends SimpleRobot
         frontRight = new Victor(9);
         backLeft = new Victor(4);
         backRight = new Victor(2);
-        
+
         watchdog = Watchdog.getInstance();
 
-		intakeVictor = new Victor(8);
+        intakeVictor = new Victor(8);
     }
 
     /**
@@ -57,9 +57,16 @@ public class RobotTemplate extends SimpleRobot
     public double maxXSpeed = 1;//.1;
     public double maxYSpeed = 1;//.4;
     public double maxTSpeed = .5;//.4;
+
     double x;
     double y;
     double t;
+
+    Double tx = new Double(0);
+    Double ty = new Double(0);
+    Double tt = new Double(0);
+
+    double accelerationValue = 5;
 
     //@Override not supported
     public void driveControl()
@@ -68,40 +75,67 @@ public class RobotTemplate extends SimpleRobot
         y = joystick.getY() * maxYSpeed;
         t = joystick.getTwist() * maxTSpeed;
 
-        if(Math.abs(joystick.getX()) < .05)
+        if (Math.abs(joystick.getX()) < .2)
         {
             x = 0;
         }
-        
-        if(Math.abs(joystick.getY()) < .05)
+
+        if (Math.abs(joystick.getY()) < .2)
         {
             y = 0;
         }
-        
-        if(Math.abs(joystick.getTwist()) < .05)
+
+        if (Math.abs(joystick.getTwist()) < .2)
         {
             t = 0;
         }
+
+        double targetFrontRight = -y - t - x;
+        double targetBackRight = -y - t + x;
+        double targetFrontLeft = -y + t + x;
+        double targetBackLeft = -y + t - x;
+
+//        for (int i = 0; i < 4; i++)
+//        {
+//            double target;
+//            Victor motor;
+//            Double currentValue;
+//            
+//            switch (i)
+//            {
+//                case 0: target = targetFrontRight; motor = frontRight; currentValue = frontRight break;
+//                case 1: target = targetBackRight; motor = backRight; break;
+//                case 2: target = targetFrontLeft; motor = frontLeft; break;
+//                case 3: target = targetBackLeft; motor = backLeft; break;
+//                default: System.out.println("ERROR IN SWITCH STATEMENT!!!");break;
+//            }
+//            
+//        }
         
-        frontRight.set((y - t - x));
-        backRight.set((y - t + x));
+        frontRight.set(targetFrontRight);
+        backRight.set(targetBackLeft);
+        frontLeft.set(targetFrontLeft);
+        backLeft.set(targetBackLeft);
 
-        backLeft.set(-y + x);
-        frontLeft.set(-y + x);
+        boolean armUp = joystick.getRawButton(5);
+        boolean armDown = joystick.getRawButton(3);
+        double power = joystick.getThrottle() * 0.5 + .5;
 
-		boolean armUp = joystick.getRawButton(5);
-		boolean armDown = joystick.getRawButton(3);
-		double power = joystick.getThrottle()*0.5+1.0;
+        if (armUp)
+        {
+            intakeVictor.set(power);
+        }
+        else if (armDown)
+        {
+            intakeVictor.set(-power);
+        }
+        else
+        {
+            intakeVictor.set(0.0);
+        }
 
-		if (armUp)
-			intakeVictor.set(power);
-		else if (armDown)
-			intakeVictor.set(-power);
-		else
-			intakeVictor.set(0.0);
     }
 
-            
     //@Override not supported
     public void autonomous()
     {
@@ -116,35 +150,35 @@ public class RobotTemplate extends SimpleRobot
 
     public class SmartDashboardUpdater implements Runnable, ITableListener
     {
-        
+
         Preferences preferences;
         boolean saveDashboardValues = false;
         NetworkTable sd;
-        
+
         public SmartDashboardUpdater()
         {
         }
 
         public void valueChanged(ITable source, String key, Object value, boolean isNew)
         {
-            
+
             if (key.equalsIgnoreCase("saveDashboardValues"))
             {
                 Boolean update;
                 update = ((Boolean) value);
-                
+
                 if (!update.booleanValue())
                 {
                     return;
                 }
-                
+
                 sd.putBoolean("saveDashboardValues", false);
                 retrieveDashboardValues();
                 save();
             }
-            
+
         }
-        
+
         public void retrieveDashboardValues()
         {
             //bla bla bla get values.
@@ -153,36 +187,36 @@ public class RobotTemplate extends SimpleRobot
             maxTSpeed = sd.getNumber("maxTSpeed", maxTSpeed);
             save();
         }
-        
+
         public void sendDashboardValues()
         {
             sd.putNumber("maxXSpeed", maxXSpeed);
             sd.putNumber("maxYSpeed", maxYSpeed);
             sd.putNumber("maxTSpeed", maxTSpeed);
         }
-        
+
         public void load()
         {
             maxXSpeed = preferences.getDouble("maxXSpeed", maxXSpeed);
             maxYSpeed = preferences.getDouble("maxYSpeed", maxYSpeed);
             maxTSpeed = preferences.getDouble("maxTSpeed", maxTSpeed);
-            
+
             debugingEnabled = preferences.getBoolean("debugingEnabled", debugingEnabled);
-            
-            sendDashboardValues();   
+
+            sendDashboardValues();
         }
-        
+
         public void save()
         {
-            preferences.putDouble("maxXSpeed",maxXSpeed);
-            preferences.putDouble("maxYSpeed",maxYSpeed);
-            preferences.putDouble("maxTSpeed",maxTSpeed);
-            
+            preferences.putDouble("maxXSpeed", maxXSpeed);
+            preferences.putDouble("maxYSpeed", maxYSpeed);
+            preferences.putDouble("maxTSpeed", maxTSpeed);
+
             preferences.putBoolean("debugingEnabled", debugingEnabled);
-            
+
             preferences.save();
         }
-        
+
         //Initilize the SmartDashboard by loading the saved perferences.
         public void init()
         {
@@ -204,5 +238,5 @@ public class RobotTemplate extends SimpleRobot
 
         }
     }
-      public static boolean debugingEnabled = true;
+    public static boolean debugingEnabled = true;
 }
