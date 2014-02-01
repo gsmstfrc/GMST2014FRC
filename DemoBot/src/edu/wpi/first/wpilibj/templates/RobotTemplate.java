@@ -39,6 +39,9 @@ public class RobotTemplate extends SimpleRobot
         watchdog = Watchdog.getInstance();
 
         intakeVictor = new Victor(8);
+
+        Thread updater = new Thread(new SmartDashboardUpdater());
+        updater.start();
     }
 
     /**
@@ -54,9 +57,9 @@ public class RobotTemplate extends SimpleRobot
         }
     }
     //Customizable values
-    public double maxXSpeed = 1;//.1;
-    public double maxYSpeed = 1;//.4;
-    public double maxTSpeed = .5;//.4;
+    public double maxXSpeed = .5;//.1; old was 1
+    public double maxYSpeed = .5;//.4; old was 1
+    public double maxTSpeed = .4;//.4; wold was .5
 
     double x;
     double y;
@@ -66,14 +69,32 @@ public class RobotTemplate extends SimpleRobot
     Double ty = new Double(0);
     Double tt = new Double(0);
 
-    double accelerationValue = 5;
+    double accelerationValue = .05;
 
+    public static double sign(double value)
+    {
+        return (value >= 0) ? 1 : -1;
+    }
+    
     //@Override not supported
     public void driveControl()
     {
-        x = joystick.getX() * maxXSpeed;
-        y = joystick.getY() * maxYSpeed;
-        t = joystick.getTwist() * maxTSpeed;
+
+//        x = joystick.getX() * maxXSpeed;
+//        y = joystick.getY() * maxYSpeed;
+//        t = joystick.getTwist() * maxTSpeed;
+        if (joystick.getRawButton(6))
+        {
+            x = joystick.getRawAxis(1) * 1;
+            y = joystick.getRawAxis(2) * 1;
+            t = joystick.getRawAxis(3) * .5;
+        }
+        else
+        {
+            x = joystick.getRawAxis(1) * maxXSpeed;
+            y = joystick.getRawAxis(2) * maxYSpeed;
+            t = joystick.getRawAxis(3) * maxTSpeed;
+        }
 
         if (Math.abs(joystick.getX()) < .2)
         {
@@ -90,32 +111,39 @@ public class RobotTemplate extends SimpleRobot
             t = 0;
         }
 
-        double targetFrontRight = -y - t - x;
-        double targetBackRight = -y - t + x;
-        double targetFrontLeft = -y + t + x;
-        double targetBackLeft = -y + t - x;
+        double targetFrontRight = -(y + t + x);
+        double targetBackRight = -(y + t - x);
+        double targetFrontLeft = -(y - t - x);
+        double targetBackLeft = -(y - t + x);
 
-//        for (int i = 0; i < 4; i++)
-//        {
-//            double target;
-//            Victor motor;
-//            Double currentValue;
-//            
-//            switch (i)
-//            {
-//                case 0: target = targetFrontRight; motor = frontRight; currentValue = frontRight break;
-//                case 1: target = targetBackRight; motor = backRight; break;
-//                case 2: target = targetFrontLeft; motor = frontLeft; break;
-//                case 3: target = targetBackLeft; motor = backLeft; break;
-//                default: System.out.println("ERROR IN SWITCH STATEMENT!!!");break;
-//            }
-//            
-//        }
+        if(sign(frontRight.get()) != sign(targetFrontRight))
+            frontRight.set(0);
+        if(sign(backRight.get()) != sign(targetBackRight))
+            backRight.set(0);
+        if(sign(frontLeft.get()) != sign(targetFrontLeft))
+            frontLeft.set(0);
+        if(sign(backLeft.get()) != sign(targetBackLeft))
+            backLeft.set(0);
         
-        frontRight.set(targetFrontRight);
-        backRight.set(targetBackLeft);
-        frontLeft.set(targetFrontLeft);
-        backLeft.set(targetBackLeft);
+        if (Math.abs(frontRight.get()) < Math.abs(targetFrontRight))
+            frontRight.set(frontRight.get() + sign(targetFrontRight) * accelerationValue);
+        else
+            frontRight.set(targetFrontRight);
+
+        if (Math.abs(backRight.get()) < Math.abs(targetFrontRight))
+            backRight.set(backRight.get() + sign(targetFrontRight) * accelerationValue);
+        else
+            backRight.set(targetBackRight);
+
+        if (Math.abs(frontLeft.get()) < Math.abs(targetFrontLeft))
+            frontLeft.set(frontLeft.get() + sign(targetFrontLeft) * accelerationValue);
+        else
+            frontLeft.set(targetFrontLeft);
+
+        if (Math.abs(backLeft.get()) < Math.abs(targetBackLeft))
+            backLeft.set(backLeft.get() + sign(targetBackLeft) * accelerationValue);
+        else
+            backLeft.set(targetBackLeft);
 
         boolean armUp = joystick.getRawButton(5);
         boolean armDown = joystick.getRawButton(3);
@@ -227,15 +255,22 @@ public class RobotTemplate extends SimpleRobot
 
         public void run()
         {
-            NetworkTable.setTeam(3318);
+            try
+            {
+                NetworkTable.setTeam(3318);
+            }
+            catch (Exception e)
+            {
+                System.out.println("NetworkTables team already set");
+            }
             sd = NetworkTable.getTable("SmartDashboard");
             sd.addTableListener("saveDashboardValues", this, true); //True is for immedeatly notify.
             init();
+
             while (true)
             {
                 //Do some code that manages updating network table stuff.
             }
-
         }
     }
     public static boolean debugingEnabled = true;
