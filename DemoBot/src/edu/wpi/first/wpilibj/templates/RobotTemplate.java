@@ -1,14 +1,24 @@
 package edu.wpi.first.wpilibj.templates;
 
+import edu.wpi.first.wpilibj.AnalogChannel;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.SimpleRobot;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.Victor;
+import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.Watchdog;
 import edu.wpi.first.wpilibj.networktables.NetworkTable;
 import edu.wpi.first.wpilibj.tables.ITable;
 import edu.wpi.first.wpilibj.tables.ITableListener;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.Compressor;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+//import java.net.Socket;
+
+import javax.microedition.io.Connector;
+import javax.microedition.io.ServerSocketConnection;
+import javax.microedition.io.SocketConnection;
 
 public class RobotTemplate extends SimpleRobot
 {
@@ -18,30 +28,63 @@ public class RobotTemplate extends SimpleRobot
     //back left is 3
     //back right is 2
     Joystick joystick;
-    Victor frontLeft;
-    Victor frontRight;
-    Victor backLeft;
-    Victor backRight;
+    Talon frontLeft;
+    Talon frontRight;
+    Talon backLeft;
+    Talon backRight;
+
+    DoubleSolenoid sol1;
+    DoubleSolenoid sol2;
+    DoubleSolenoid sol3;
+
+    DoubleSolenoid tilt;
+
+    Compressor comp;
+
     Watchdog watchdog;
 
+    AnalogChannel ultrasonic;
+
     // Test arm Controls
-    Victor intakeVictor;
+    Talon intake;
+    Talon intake2;
 
     public RobotTemplate()
     {
-        joystick = new Joystick(1);
+        try
+        {
+            joystick = new Joystick(1);
 
-        frontLeft = new Victor(3);
-        frontRight = new Victor(9);
-        backLeft = new Victor(4);
-        backRight = new Victor(2);
+            frontLeft = new Talon(4);
+            frontRight = new Talon(1);
+            backLeft = new Talon(3);
+            backRight = new Talon(2);
 
-        watchdog = Watchdog.getInstance();
+            sol1 = new DoubleSolenoid(1, 2); //Right
+            sol2 = new DoubleSolenoid(3, 4); //Middle
+            sol3 = new DoubleSolenoid(5, 6); //Left
+            tilt = new DoubleSolenoid(7, 8);
 
-        intakeVictor = new Victor(8);
+            comp = new Compressor(1, 1);
+            comp.start();
 
-        Thread updater = new Thread(new SmartDashboardUpdater());
-        updater.start();
+            watchdog = Watchdog.getInstance();
+            ultrasonic = new AnalogChannel(1);
+
+            intake = new Talon(5);
+            intake2 = new Talon(6);
+
+            tilt.set(DoubleSolenoid.Value.kForward);
+
+            Thread updater = new Thread(new SmartDashboardUpdater());
+            updater.start();
+            Thread piUpdater = new Thread(new PiServer());
+            piUpdater.start();
+        }
+        catch (Exception e)
+        {
+            System.out.println(e.getMessage());
+        }
     }
 
     /**
@@ -52,8 +95,12 @@ public class RobotTemplate extends SimpleRobot
         while (true && isOperatorControl() && isEnabled())
         {
             driveControl();
+            pneumaticControl();
+            intakeControl();
             watchdog.feed();
-            Timer.delay(0.005);
+            Timer.delay(0.01);
+
+            //System.out.println(ultrasonic.getValue());
         }
     }
     //Customizable values
@@ -69,104 +116,221 @@ public class RobotTemplate extends SimpleRobot
     Double ty = new Double(0);
     Double tt = new Double(0);
 
-    double accelerationValue = .05;
+    double accelerationValue = .02;
 
     public static double sign(double value)
     {
         return (value >= 0) ? 1 : -1;
     }
-    
-    //@Override not supported
-    public void driveControl()
+
+    boolean foldedOut = false;
+    boolean releasedToggle = true;
+
+    public void pneumaticControl()
     {
 
-//        x = joystick.getX() * maxXSpeed;
-//        y = joystick.getY() * maxYSpeed;
-//        t = joystick.getTwist() * maxTSpeed;
-        if (joystick.getRawButton(6))
+        if (joystick.getRawButton(4))
         {
-            x = joystick.getRawAxis(1) * 1;
-            y = joystick.getRawAxis(2) * 1;
-            t = joystick.getRawAxis(3) * .5;
+            //tilt.set(DoubleSolenoid.Value.kReverse);
+            sol1.set(DoubleSolenoid.Value.kForward);
+            sol3.set(DoubleSolenoid.Value.kForward);
+            sol2.set(DoubleSolenoid.Value.kReverse);
+        }
+
+        else if (joystick.getRawButton(3))
+        {
+            //tilt.set(DoubleSolenoid.Value.kReverse);
+            sol3.set(DoubleSolenoid.Value.kForward);
+            sol1.set(DoubleSolenoid.Value.kReverse);
+            sol2.set(DoubleSolenoid.Value.kReverse);
+        }
+
+        else if (joystick.getRawButton(2))
+        {
+            //tilt.set(DoubleSolenoid.Value.kReverse);
+            sol3.set(DoubleSolenoid.Value.kReverse);
+            sol1.set(DoubleSolenoid.Value.kReverse);
+            sol2.set(DoubleSolenoid.Value.kReverse);
         }
         else
         {
-            x = joystick.getRawAxis(1) * maxXSpeed;
-            y = joystick.getRawAxis(2) * maxYSpeed;
-            t = joystick.getRawAxis(3) * maxTSpeed;
+            sol3.set(DoubleSolenoid.Value.kForward);
+            sol1.set(DoubleSolenoid.Value.kForward);
+            sol2.set(DoubleSolenoid.Value.kForward);
         }
 
-        if (Math.abs(joystick.getX()) < .2)
+        if (joystick.getRawButton(7))
         {
-            x = 0;
+            tilt.set(DoubleSolenoid.Value.kReverse);
         }
-
-        if (Math.abs(joystick.getY()) < .2)
+        else if (joystick.getRawButton(5))
         {
-            y = 0;
-        }
-
-        if (Math.abs(joystick.getTwist()) < .2)
-        {
-            t = 0;
-        }
-
-        double targetFrontRight = -(y + t + x);
-        double targetBackRight = -(y + t - x);
-        double targetFrontLeft = -(y - t - x);
-        double targetBackLeft = -(y - t + x);
-
-        if(sign(frontRight.get()) != sign(targetFrontRight))
-            frontRight.set(0);
-        if(sign(backRight.get()) != sign(targetBackRight))
-            backRight.set(0);
-        if(sign(frontLeft.get()) != sign(targetFrontLeft))
-            frontLeft.set(0);
-        if(sign(backLeft.get()) != sign(targetBackLeft))
-            backLeft.set(0);
-        
-        if (Math.abs(frontRight.get()) < Math.abs(targetFrontRight))
-            frontRight.set(frontRight.get() + sign(targetFrontRight) * accelerationValue);
-        else
-            frontRight.set(targetFrontRight);
-
-        if (Math.abs(backRight.get()) < Math.abs(targetFrontRight))
-            backRight.set(backRight.get() + sign(targetFrontRight) * accelerationValue);
-        else
-            backRight.set(targetBackRight);
-
-        if (Math.abs(frontLeft.get()) < Math.abs(targetFrontLeft))
-            frontLeft.set(frontLeft.get() + sign(targetFrontLeft) * accelerationValue);
-        else
-            frontLeft.set(targetFrontLeft);
-
-        if (Math.abs(backLeft.get()) < Math.abs(targetBackLeft))
-            backLeft.set(backLeft.get() + sign(targetBackLeft) * accelerationValue);
-        else
-            backLeft.set(targetBackLeft);
-
-        boolean armUp = joystick.getRawButton(5);
-        boolean armDown = joystick.getRawButton(3);
-        double power = joystick.getThrottle() * 0.5 + .5;
-
-        if (armUp)
-        {
-            intakeVictor.set(power);
-        }
-        else if (armDown)
-        {
-            intakeVictor.set(-power);
+            tilt.set(DoubleSolenoid.Value.kForward);
         }
         else
         {
-            intakeVictor.set(0.0);
+            tilt.set(DoubleSolenoid.Value.kOff);
+        }
+//        if (foldedOut)
+//        {
+//            tilt.set(DoubleSolenoid.Value.kReverse);
+//        }
+//        else
+//        {
+//            tilt.set(DoubleSolenoid.Value.kReverse);
+//        }
+//        if(joystick.getRawButton(5) && releasedToggle)
+//        {
+//            foldedOut = !foldedOut;
+//        }
+//        if(joystick.getRawButton(5))
+//        {
+//            releasedToggle = false;
+//        }
+//        else
+//        {
+//            releasedToggle = true;
+//        }
+
+    }
+
+    public void intakeControl()
+    {
+
+        if (joystick.getRawButton(6)) //intake
+        {
+            intake.set(.5);
+            intake2.set(.5);
+        }
+
+        else if (joystick.getRawButton(8)) //out take
+        {
+            intake.set(-1);
+            intake2.set(-1);
+        }
+
+        else
+        {
+            intake.set(0);
+            intake2.set(0);
         }
 
     }
 
+    boolean useOldCode = false;
+    double multiplier = 1;
+
+    //@Override not supported
+    public void driveControl()
+    {
+
+        if (joystick.getRawButton(11))
+        {
+            multiplier = 1;
+        }
+        if(joystick.getRawButton(10))
+        {
+            multiplier = -1;
+        }
+        
+            x = multiplier * joystick.getRawAxis(1) * 1;//maxXSpeed;
+            y = multiplier * joystick.getRawAxis(2) * 1;//maxYSpeed;
+            t = multiplier * joystick.getRawAxis(3) * 1;//maxTSpeed;
+
+        if (Math.abs(joystick.getX()) < .1)
+        {
+            x = 0;
+        }
+
+        if (Math.abs(joystick.getY()) < .1)
+        {
+            y = 0;
+        }
+
+        if (Math.abs(joystick.getTwist()) < .1)
+        {
+            t = 0;
+        }
+
+        double targetFrontRight = (y + t + x);
+        double targetBackRight = (y + t - x);
+        double targetFrontLeft = -(y - t - x);
+        double targetBackLeft = -(y - t + x);
+
+        if (sign(frontRight.get()) != sign(targetFrontRight))
+            frontRight.set(0);
+        if (sign(backRight.get()) != sign(targetBackRight))
+            backRight.set(0);
+        if (sign(frontLeft.get()) != sign(targetFrontLeft))
+            frontLeft.set(0);
+        if (sign(backLeft.get()) != sign(targetBackLeft))
+            backLeft.set(0);
+        if (!useOldCode)
+        {
+            if (Math.abs(frontRight.get()) < Math.abs(targetFrontRight))
+                frontRight.set(frontRight.get() + sign(targetFrontRight) * accelerationValue);
+            else
+                frontRight.set(targetFrontRight);
+
+            if (Math.abs(backRight.get()) < Math.abs(targetBackRight))
+                backRight.set(backRight.get() + sign(targetBackRight) * accelerationValue);
+            else
+                backRight.set(targetBackRight);
+
+            if (Math.abs(frontLeft.get()) < Math.abs(targetFrontLeft))
+                frontLeft.set(frontLeft.get() + sign(targetFrontLeft) * accelerationValue);
+            else
+                frontLeft.set(targetFrontLeft);
+
+            if (Math.abs(backLeft.get()) < Math.abs(targetBackLeft))
+                backLeft.set(backLeft.get() + sign(targetBackLeft) * accelerationValue);
+            else
+                backLeft.set(targetBackLeft);
+        }
+        else
+        {
+            frontLeft.set(targetFrontLeft);
+            frontRight.set(targetFrontRight);
+            backRight.set(targetBackRight);
+            backLeft.set(targetBackLeft);
+        }
+    }
+
+    Timer t2 = new Timer();
+
     //@Override not supported
     public void autonomous()
     {
+        t2.reset();
+        t2.start();
+        frontLeft.set(-.50);
+        frontRight.set(.50);
+        backRight.set(.50);
+        backLeft.set(-.50);
+        while (t2.get() < .72);
+        frontLeft.set(0);
+        frontRight.set(0);
+        backRight.set(0);
+        backLeft.set(0);
+        double goal = t2.get() + .5;
+        while (t2.get() < goal);
+        tilt.set(DoubleSolenoid.Value.kReverse);
+        goal = t2.get() + 1.5;
+        while (t2.get() < goal);
+        sol3.set(DoubleSolenoid.Value.kReverse);
+        sol1.set(DoubleSolenoid.Value.kReverse);
+        sol2.set(DoubleSolenoid.Value.kReverse);
+        goal = t2.get() + 3;
+        while (t2.get() < goal);
+        sol3.set(DoubleSolenoid.Value.kForward);
+        sol1.set(DoubleSolenoid.Value.kForward);
+        sol2.set(DoubleSolenoid.Value.kForward);
+    }
+
+    public void disabled()
+    {
+        t2.stop();
+        System.out.println("Time should be " + t2.get());
     }
 
     /**
@@ -257,7 +421,7 @@ public class RobotTemplate extends SimpleRobot
         {
             try
             {
-                NetworkTable.setTeam(3318);
+                //NetworkTable.setTeam(3318);
             }
             catch (Exception e)
             {
@@ -274,4 +438,106 @@ public class RobotTemplate extends SimpleRobot
         }
     }
     public static boolean debugingEnabled = true;
+
+    public class PiServer implements Runnable
+    {
+
+        public void run()
+        {
+            ServerSocketConnection ssc;
+            try
+            {
+                ssc = (ServerSocketConnection) Connector.open("socket://:80");
+                SocketConnection sc = null;
+                while (true)
+                {
+                    sc = (SocketConnection) ssc.acceptAndOpen();
+                    InputStreamReader in = new InputStreamReader(sc.openInputStream());
+                    PrintStream out = new PrintStream(sc.openOutputStream());
+                    char c;
+                    double time = Timer.getFPGATimestamp();
+                    while ((c = (char) in.read()) != -1 && time + 5 > Timer.getFPGATimestamp())
+                    {
+                        System.out.print(c);
+                    }
+                    System.out.println("");
+                    out.print("HTTP/1.1 200 OK\r\n\r\n");
+                    out.print("<html>Message<html/>");
+                    System.out.println("written out.");
+                    out.close();
+                    in.close();
+                    sc.close();
+                }
+            }
+            catch (Exception e)
+            {
+
+            }
+        }
+//        public void run()
+//        {
+//            boolean stop = false;
+//            System.out.println("attempting to create a TCP ServerSocket on port 9000");
+//            
+//            ServerSocketConnection scn = null;
+//            
+//            try
+//            {
+//                scn = (ServerSocketConnection) Connector.open("socket://:9000");
+//                System.out.println("bound socket!");
+//            }
+//            catch (Exception e)
+//            {
+//                System.out.println(e.getMessage());
+//                stop = true;
+//            }
+//            
+//            while (!stop)
+//            {
+//                try
+//                {
+//
+//                    // Wait for a connection.
+//                    SocketConnection sc = (SocketConnection) scn.acceptAndOpen();
+//                    System.out.println("connection made!");
+//
+//                    // Set application specific hints on the socket.
+//                    //sc.setSocketOption(SocketConnection.DELAY, 0);
+//                    //sc.setSocketOption(SocketConnection.LINGER, 0);
+//                    //sc.setSocketOption(SocketConnection.KEEPALIVE, 0);
+//                    //sc.setSocketOption(SocketConnection.RCVBUF, 128);
+//                    //sc.setSocketOption(SocketConnection.SNDBUF, 128);
+//                    // Get the input stream of the connection.
+//                    BufferedReader reader = new BufferedReader(new InputStreamReader(sc.openDataInputStream()));
+//
+//                    // Get the output stream of the connection.
+//                    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(sc.openDataOutputStream()));
+//                    writer.write("this is a test garbage");
+//                    writer.flush();
+//                    String string;
+//                    System.out.println("reading...");
+//                    while ((string = reader.readLine()) != null && string.equalsIgnoreCase("disconnect"))
+//                    {
+//                        //do stuff
+//                        System.out.println("read! " + string);
+//                        writer.write("new garbage! :D");
+//                        writer.flush();
+//                    }
+//                    System.out.println("closing the connection...");
+//                    reader.close();
+//                    writer.close();
+//                    scn.close();
+//                    sc.close();
+//                    System.out.println("closed");
+//                }
+//                catch (Exception e)
+//                {
+//                    System.out.println(e.getClass() + " \n" + e.getMessage());
+//                    e.printStackTrace();
+//                    System.out.println(e.toString());
+//                    //stop = true;
+//                }
+//            }
+    }
+
 }
