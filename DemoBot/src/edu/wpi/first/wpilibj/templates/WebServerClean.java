@@ -45,7 +45,7 @@ public class WebServerClean implements Runnable
             Variables.setVariable("w_NetworkBufferSize", 2048);
 
         PORT = Variables.getInt("w_Port");
-        DEBUG = false;//Variables.getBoolean("w_DebugLog");
+        DEBUG = true;//Variables.getBoolean("w_DebugLog");
         BUFFER_SIZE = Variables.getInt("w_NetworkBufferSize");
     }
     //=-=-=-=-=-=-=-=-=- END STATIC METHODS AND CONSTRUCTORS -=-=-=-=-=-=-=-=-=-=-=
@@ -128,9 +128,9 @@ public class WebServerClean implements Runnable
 
             Enumeration keys = variables.keys();
 
-            while (keys.hasMoreElements())
+            for (int i = 0; i < Variables.sortedKeys.length; i++)
             {
-                String key = (String) keys.nextElement();
+                String key = (String) Variables.sortedKeys[i];
                 if (key.startsWith("a_") && key.length() > 0)
                     form += "<tr>"
                             + "<td>" + key + ": </td>"
@@ -148,11 +148,9 @@ public class WebServerClean implements Runnable
             Hashtable variables = Variables.getTable();
             try
             {
-                Enumeration keys = variables.keys();
-
-                while (keys.hasMoreElements())
+                for (int i = 0; i < Variables.sortedKeys.length; i++)
                 {
-                    String key = (String) keys.nextElement();
+                    String key = (String) Variables.sortedKeys[i];
                     if (!key.startsWith("a_") && !key.startsWith("w_") && key.length() > 0)
                         form += "<tr>"
                                 + "<td>" + key + ": </td>"
@@ -175,11 +173,9 @@ public class WebServerClean implements Runnable
             Hashtable variables = Variables.getTable();
             try
             {
-                Enumeration keys = variables.keys();
-
-                while (keys.hasMoreElements())
+                for (int i = 0; i < Variables.sortedKeys.length; i++)
                 {
-                    String key = (String) keys.nextElement();
+                    String key = (String) Variables.sortedKeys[i];
                     if (key.startsWith("w_") && key.length() > 0)
                         form += "<tr>"
                                 + "<td>" + key + ": </td>"
@@ -200,10 +196,10 @@ public class WebServerClean implements Runnable
             //This thread is to allow the header to be constantly updated.
             //UPDATE: USING WHILE TRUE CAUSES HEADERS TO GET MESSED UP. AVOID DOING THIS.
             //------- ALLOW THE CLIENT TO MAKE AN ADDITIONAL CONNECTION, RATHER THATN JUST USING ONE.
-            
+
             //while(true)
             //{
-                readRequest();
+            readRequest();
             //}
 
         }
