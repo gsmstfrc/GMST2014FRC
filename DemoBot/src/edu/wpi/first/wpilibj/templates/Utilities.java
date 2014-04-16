@@ -28,6 +28,7 @@ public class Utilities
     public static void saveStringToFile(String fileName, String toSave)
     {
         //WARNING!! THERE WAS A PROBLEM WITH THIS CODE DON'T USE IT.
+        //THIS IS NOT THREAD SAFE OR SOMETHING!!!
 //        PrintStream out;
 //        DataOutputStream theFile;
 //        FileConnection fc;

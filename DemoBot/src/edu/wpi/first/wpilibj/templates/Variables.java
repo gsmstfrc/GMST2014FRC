@@ -9,6 +9,8 @@ public class Variables
 {
 
     private static Hashtable variables = new Hashtable();
+    
+    public static String sortedKeys[] = new String[]{"maxXSpeed","maxYSpeed","maxTSpeed","ONEHOLD","TWOHOLD","THREEHOLD","accelerationValue","w_Port","w_NetworkBufferSize","w_DebugLog","a_movementSpeed","a_driveTime","a_waitForSettle","a_fireTime"};
 
     public static boolean DEBUG = true;
 
@@ -19,34 +21,43 @@ public class Variables
 
     public static void setVariable(String varName, int i)
     {
-        variables.remove(varName);
+        if (variables.containsKey(varName))
+            variables.remove(varName);
         variables.put(varName, new Integer(i).toString());
     }
 
     public static void setVariable(String varName, double db)
     {
-        variables.remove(varName);
+        if (variables.containsKey(varName))
+            variables.remove(varName);
         variables.put(varName, new Double(db).toString());
     }
 
     public static void setVariable(String varName, boolean bool)
     {
-        variables.remove(varName);
+        if (variables.containsKey(varName))
+            variables.remove(varName);
         variables.put(varName, bool ? "TRUE" : "FALSE");
     }
 
     public static int getInt(String varName)
     {
+        if (!variables.containsKey(varName))
+            variables.put(varName, "0");
         return Integer.parseInt(((String) variables.get(varName)).trim());
     }
 
     public static double getDouble(String varName)
     {
+        if (!variables.containsKey(varName))
+            variables.put(varName, "0");
         return Double.parseDouble(((String) variables.get(varName)).trim());
     }
 
     public static boolean getBoolean(String varName)
     {
+        if (!variables.containsKey(varName))
+            variables.put(varName, "FALSE");
         return varName.trim().equalsIgnoreCase("TRUE");
     }
 
@@ -93,7 +104,7 @@ public class Variables
             while (keys.hasMoreElements())
             {
                 String key = (String) keys.nextElement();
-                Utilities.debugLine("Variables.updateTableWithTable(): trying to set " + key + " to " + (String)table.get(key.trim()), DEBUG);
+                Utilities.debugLine("Variables.updateTableWithTable(): trying to set " + key + " to " + (String) table.get(key.trim()), DEBUG);
                 variables.put(key.trim(), (String) table.get(key));
             }
         }

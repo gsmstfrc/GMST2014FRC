@@ -9,6 +9,7 @@
 package edu.wpi.first.wpilibj.templates;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.Enumeration;
@@ -69,6 +70,18 @@ public class WebServerClean implements Runnable
                 Thread t = new Thread(new ConnectionHandler(sc));
                 t.setPriority(Thread.MIN_PRIORITY);
                 t.start();
+                
+//--------------------------------------- DEBUG THREAD NUMBER ---------------------------------
+                try
+                {
+                    System.out.println("Active Threads: " + Thread.activeCount());
+                }
+                catch (Exception e)
+                {
+                    System.out.println("There was an eror getting the thread count.");
+                }
+//--------------------------------------- DEBUG THREAD NUMBER ---------------------------------
+                
             }
             while (running);
             ssc.close();
@@ -90,14 +103,17 @@ public class WebServerClean implements Runnable
         boolean closed = false;
 
         //Reading in data.
-        String header = "";
-        String content;
-        String method;
-        String file;
-        Hashtable headerFields;
+        public String header = "";
+        public String content;
+        public String method;
+        public String file;
+        public Hashtable headerFields;
         //Response data
         String responseHeader = "";
         String document = "";
+
+        Timer t1 = new Timer();
+        double lastTime = 0;
 
         public ConnectionHandler(SocketConnection sc)
         {
@@ -213,6 +229,14 @@ public class WebServerClean implements Runnable
                 parsePost();
             }
 
+            if(headerFields.containsKey("Upgrade") && ((String)headerFields.get("Upgrade")).equalsIgnoreCase("websocket"))
+            {
+                if(!headerFields.containsKey("Sec-WebSocket-Key"))
+                    Utilities.debug("There key Sec-WebSocket-Key does not exist. can not create web socket.", DEBUG);
+                WebSocket ws = new WebSocket(this,sc,in,out,(String)headerFields.get("Sec-WebSocket-Key"));
+                return;
+            }
+            
             sendDocument();
 
         }
@@ -380,14 +404,13 @@ public class WebServerClean implements Runnable
                 String[] tempLine = Utilities.splitStringOnce(lines[i], ":");
                 table.put(tempLine[0].trim(), tempLine[1].trim());
             }
-
             headerFields = table;
-
         }
 
         //1st step in making the connection
         public void readRequest()
         {
+            t1.start();
             StringBuffer sb = new StringBuffer(BUFFER_SIZE);
             char c;
             int sequentialBreaks = 0;
@@ -420,9 +443,23 @@ public class WebServerClean implements Runnable
             }
             header += sb.toString().trim();
             Utilities.debugLine("WebServer.readRequest(): Header was \n" + header, DEBUG);
+
+            Utilities.debugLine("WebServer read bytes completed in " + t1.get(), running);
+            lastTime = t1.get();
+
             parseHeader();
+
+            Utilities.debugLine("WebServer parse header completed in " + (t1.get() - lastTime), running);
+            lastTime = t1.get();
+
             readContent();
+
+            Utilities.debugLine("WebServer parseHeader completed in " + (t1.get() - lastTime), running);
+            lastTime = t1.get();
+
             process();
+
+            Utilities.debugLine("WebServer processing and reply completed in " + (t1.get() - lastTime), running);
         }
     }
 

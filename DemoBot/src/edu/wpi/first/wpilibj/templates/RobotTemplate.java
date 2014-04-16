@@ -75,6 +75,7 @@ public class RobotTemplate extends SimpleRobot
             //updater.start();
             Thread piUpdater = new Thread(new WebServerClean());
             piUpdater.start();
+            Variables.load();
 //            Thread averager = new Thread()
 //            {
 //                public void run()
@@ -92,12 +93,17 @@ public class RobotTemplate extends SimpleRobot
 //            };
             //averager.setPriority(Thread.MIN_PRIORITY);
             //averager.start();
-            Variables.load();
+            reloadVariables();
         }
         catch (Exception e)
         {
             Utilities.debugLine(e.getMessage(), DEBUG);
         }
+    }
+
+    public void onEnable()
+    {
+        reloadVariables();
     }
 
     /**
@@ -315,9 +321,9 @@ public class RobotTemplate extends SimpleRobot
             multiplier = -1;
         }
 
-        x = multiplier * joystick.getRawAxis(1) * 1;//maxXSpeed;
-        y = multiplier * joystick.getRawAxis(2) * 1;//maxYSpeed;
-        t = joystick.getRawAxis(3) * 1;//maxTSpeed;
+        x = multiplier * joystick.getRawAxis(1) * maxXSpeed;
+        y = multiplier * joystick.getRawAxis(2) * maxYSpeed;
+        t = joystick.getRawAxis(3) * maxTSpeed;
 
         if (Math.abs(joystick.getX()) < .1)
         {
@@ -382,66 +388,38 @@ public class RobotTemplate extends SimpleRobot
 
     boolean useOldAuto = true;
 
+    double a_movementSpeed = .50;
+    double a_driveTime = 1.6;
+    double a_waitForSettle = .25;
+    double a_fireTime = 1;
+
     //@Override not supported
     public void autonomous()
     {
-        if (!useOldAuto)
-        {
-            t2.reset();
-            t2.start();
-            frontLeft.set(-.40);
-            frontRight.set(.40);
-            backRight.set(.40);
-            backLeft.set(-.40);
-            while (ultrasonic.getValue() > 250)
-                Timer.delay(0.1);
-            frontLeft.set(0);
-            frontRight.set(0);
-            backRight.set(0);
-            backLeft.set(0);
-            double goal = t2.get() + .5;
-            while (t2.get() < goal);
-            tilt.set(DoubleSolenoid.Value.kReverse);
-            goal = t2.get() + 1.5;
-            while (t2.get() < goal);
-            sol3.set(DoubleSolenoid.Value.kReverse);
-            sol1.set(DoubleSolenoid.Value.kReverse);
-            sol2.set(DoubleSolenoid.Value.kReverse);
-            goal = t2.get() + 3;
-            while (t2.get() < goal);
-            sol3.set(DoubleSolenoid.Value.kForward);
-            sol1.set(DoubleSolenoid.Value.kForward);
-            sol2.set(DoubleSolenoid.Value.kForward);
-            tilt.set(DoubleSolenoid.Value.kForward);
-        }
-        else
-        {
-
-            t2.reset();
-            t2.start();
-            frontLeft.set(-.50);
-            frontRight.set(.50);
-            backRight.set(.50);
-            backLeft.set(-.50);
-            while (t2.get() < 1.6);
-            frontLeft.set(0);
-            frontRight.set(0);
-            backRight.set(0);
-            backLeft.set(0);
-            double goal = t2.get() + .25;
-            while (t2.get() < goal);
-            //tilt.set(DoubleSolenoid.Value.kReverse);
-            //goal = t2.get() + .75;
-            //while (t2.get() < goal);
-            sol3.set(DoubleSolenoid.Value.kReverse);
-            sol1.set(DoubleSolenoid.Value.kReverse);
-            sol2.set(DoubleSolenoid.Value.kReverse);
-            goal = t2.get() + 1;
-            while (t2.get() < goal);
-            sol3.set(DoubleSolenoid.Value.kForward);
-            sol1.set(DoubleSolenoid.Value.kForward);
-            sol2.set(DoubleSolenoid.Value.kForward);
-        }
+        t2.reset();
+        t2.start();
+        frontLeft.set(-a_movementSpeed);
+        frontRight.set(a_movementSpeed);
+        backRight.set(a_movementSpeed);
+        backLeft.set(-a_movementSpeed);
+        while (t2.get() < a_driveTime);
+        frontLeft.set(0);
+        frontRight.set(0);
+        backRight.set(0);
+        backLeft.set(0);
+        double goal = t2.get() + a_waitForSettle;
+        while (t2.get() < goal);
+        //tilt.set(DoubleSolenoid.Value.kReverse);
+        //goal = t2.get() + .75;
+        //while (t2.get() < goal);
+        sol3.set(DoubleSolenoid.Value.kReverse);
+        sol1.set(DoubleSolenoid.Value.kReverse);
+        sol2.set(DoubleSolenoid.Value.kReverse);
+        goal = t2.get() + a_fireTime;
+        while (t2.get() < goal);
+        sol3.set(DoubleSolenoid.Value.kForward);
+        sol1.set(DoubleSolenoid.Value.kForward);
+        sol2.set(DoubleSolenoid.Value.kForward);
     }
 
     public void disabled()
@@ -457,103 +435,31 @@ public class RobotTemplate extends SimpleRobot
     {
     }
 
-//    public class SmartDashboardUpdater implements Runnable, ITableListener
-//    {
-//
-//        Preferences preferences;
-//        boolean saveDashboardValues = false;
-//        NetworkTable sd;
-//
-//        public SmartDashboardUpdater()
-//        {
-//        }
-//
-//        public void valueChanged(ITable source, String key, Object value, boolean isNew)
-//        {
-//
-//            if (key.equalsIgnoreCase("saveDashboardValues"))
-//            {
-//                Boolean update;
-//                update = ((Boolean) value);
-//
-//                if (!update.booleanValue())
-//                {
-//                    return;
-//                }
-//
-//                sd.putBoolean("saveDashboardValues", false);
-//                retrieveDashboardValues();
-//                save();
-//            }
-//
-//        }
-//
-//        public void retrieveDashboardValues()
-//        {
-//            //bla bla bla get values.
-//            maxXSpeed = sd.getNumber("maxXSpeed", maxXSpeed);
-//            maxYSpeed = sd.getNumber("maxYSpeed", maxYSpeed);
-//            maxTSpeed = sd.getNumber("maxTSpeed", maxTSpeed);
-//            save();
-//        }
-//
-//        public void sendDashboardValues()
-//        {
-//            sd.putNumber("maxXSpeed", maxXSpeed);
-//            sd.putNumber("maxYSpeed", maxYSpeed);
-//            sd.putNumber("maxTSpeed", maxTSpeed);
-//        }
-//
-//        public void load()
-//        {
-//            maxXSpeed = preferences.getDouble("maxXSpeed", maxXSpeed);
-//            maxYSpeed = preferences.getDouble("maxYSpeed", maxYSpeed);
-//            maxTSpeed = preferences.getDouble("maxTSpeed", maxTSpeed);
-//
-//            debugingEnabled = preferences.getBoolean("debugingEnabled", debugingEnabled);
-//
-//            sendDashboardValues();
-//        }
-//
-//        public void save()
-//        {
-//            preferences.putDouble("maxXSpeed", maxXSpeed);
-//            preferences.putDouble("maxYSpeed", maxYSpeed);
-//            preferences.putDouble("maxTSpeed", maxTSpeed);
-//
-//            preferences.putBoolean("debugingEnabled", debugingEnabled);
-//
-//            preferences.save();
-//        }
-//
-//        //Initilize the SmartDashboard by loading the saved perferences.
-//        public void init()
-//        {
-//            preferences = Preferences.getInstance();
-//            load();
-//            sd.putBoolean("saveDashboardValues", true);
-//        }
-//
-//        public void run()
-//        {
-//            try
-//            {
-//                //NetworkTable.setTeam(3318);
-//            }
-//            catch (Exception e)
-//            {
-//                Utilities.debugLine("NetworkTables team already set", DEBUG);
-//            }
-//            sd = NetworkTable.getTable("SmartDashboard");
-//            sd.addTableListener("saveDashboardValues", this, true); //True is for immedeatly notify.
-//            init();
-//
-//            while (true)
-//            {
-//                //Do some code that manages updating network table stuff.
-//            }
-//        }
-//    }
+    public void reloadVariables()
+    {
+        try
+        {
+            TWO_HOLD = Variables.getDouble("TWOHOLD");
+            THREE_HOLD = Variables.getDouble("THREEHOLD");
+            ONE_HOLD = Variables.getDouble("ONEHOLD");
+
+            accelerationValue = Variables.getDouble("accelerationValue");
+
+            maxXSpeed = Variables.getDouble("maxXSpeed");
+            maxYSpeed = Variables.getDouble("maxYSpeed");
+            maxTSpeed = Variables.getDouble("maxTSpeed");
+
+            a_movementSpeed = Variables.getDouble("a_movementSpeed");
+            a_driveTime = Variables.getDouble("a_driveTime");
+            a_waitForSettle = Variables.getDouble("a_waitForSettle");
+            a_fireTime = Variables.getDouble("a_fireTime");
+        }
+        catch (Exception e)
+        {
+            System.out.println(e.toString());
+        }
+    }
+
     public static boolean debugingEnabled = true;
 
 }
