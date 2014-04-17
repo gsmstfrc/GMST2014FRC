@@ -8,7 +8,7 @@ package edu.wpi.first.wpilibj.templates;
 import com.sun.squawk.microedition.io.FileConnection;
 import edu.wpi.first.wpilibj.DriverStation;
 import java.io.InputStream;
-import java.io.PrintStream;
+import java.io.OutputStreamWriter;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
@@ -23,7 +23,7 @@ import javax.microedition.io.SocketConnection;
 public class WebServer implements Runnable
 {
 
-    public void sendMainPage(InputStream in, PrintStream out)
+    public void sendMainPage(InputStream in, OutputStreamWriter out)
     {
         try
         {
@@ -68,12 +68,12 @@ public class WebServer implements Runnable
         }
     }
 
-    public void sendPage(InputStream in, PrintStream out, String filePath)
+    public void sendPage(InputStream in, OutputStreamWriter out, String filePath)
     {
         try
         {
-            out.print("HTTP/1.1 200 OK\r\n\r\n");
-            //out.print("filePath = " + filePath);
+            out.write("HTTP/1.1 200 OK\r\n\r\n");
+            //out.write("filePath = " + filePath);
             String toBeReplaced = readFile(filePath);
 
             if (!filePath.endsWith(".html"))
@@ -81,11 +81,11 @@ public class WebServer implements Runnable
                 String replaced = replace(toBeReplaced, "{AUTONOMOUS}", generateAutonomousForm());
                 replaced = replace(replaced, "{TELEOP}", generateTeleopForm());
                 replaced = replace(replaced, "{VOLTAGE}", "" + DriverStation.getInstance().getBatteryVoltage());
-                out.print(replaced);
+                out.write(replaced);
             }
             else
             {
-                out.print(toBeReplaced);
+                out.write(toBeReplaced);
             }
             System.out.println("written out.");
         }
@@ -145,7 +145,7 @@ public class WebServer implements Runnable
 
     final int bufferSize = 1024;
 
-    public void readRequest(InputStream in, PrintStream out)
+    public void readRequest(InputStream in, OutputStreamWriter out)
     {
         try
         {
@@ -225,7 +225,7 @@ public class WebServer implements Runnable
                 }
                 else
                 {
-                    //System.out.print("reader not ready!!!");
+                    //System.out.write("reader not ready!!!");
                 }
             }
             //System.out.println("IT BROKE THE LOOP!!");
@@ -330,7 +330,7 @@ public class WebServer implements Runnable
             try
             {
                 InputStream in = (sc.openInputStream());
-                PrintStream out = new PrintStream(sc.openOutputStream());
+                OutputStreamWriter out = new OutputStreamWriter(sc.openOutputStream());
                 readRequest(in, out);
                 //sendHTML(in,out);
                 out.close();
