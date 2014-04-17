@@ -18,18 +18,18 @@ public class RobotTemplate extends SimpleRobot
     //back left is 3
     //back right is 2
     Joystick joystick;
-    Talon frontLeft;
-    Talon frontRight;
-    Talon backLeft;
-    Talon backRight;
+    public static Talon frontLeft;
+    public static Talon frontRight;
+    public static Talon backLeft;
+    public static Talon backRight;
 
-    DoubleSolenoid sol1;
-    DoubleSolenoid sol2;
-    DoubleSolenoid sol3;
+    public static DoubleSolenoid sol1;
+    public static DoubleSolenoid sol2;
+    public static DoubleSolenoid sol3;
 
-    DoubleSolenoid tilt;
+    public static DoubleSolenoid tilt;
 
-    Compressor comp;
+    public static Compressor comp;
 
     Watchdog watchdog;
 
@@ -38,10 +38,12 @@ public class RobotTemplate extends SimpleRobot
     int[] average = new int[5];
 
     // Test arm Controls
-    Talon intake;
-    Talon intake2;
+    public static Talon intake;
+    public static Talon intake2;
 
     boolean DEBUG = false;
+
+    public static boolean GoalDetected = false;
 
     public RobotTemplate()
     {
@@ -76,6 +78,25 @@ public class RobotTemplate extends SimpleRobot
             Thread piUpdater = new Thread(new WebServerClean());
             piUpdater.start();
             Variables.load();
+            Thread switchpanel = new Thread()
+            {
+                public void run()
+                {
+                    while (true)
+                    {
+                        switchpanel();
+                        try
+                        {
+                            Thread.sleep(20);
+                        }
+                        catch (Exception e)
+                        {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            };
+            switchpanel.start();
 //            Thread averager = new Thread()
 //            {
 //                public void run()
@@ -101,9 +122,25 @@ public class RobotTemplate extends SimpleRobot
         }
     }
 
-    public void onEnable()
+    public void switchpanel()
     {
-        reloadVariables();
+        try
+        {
+            if (GoalDetected)
+            {
+                DriverStation.getInstance().getEnhancedIO().setDigitalOutput(13, false);
+                DriverStation.getInstance().getEnhancedIO().setDigitalOutput(15, false);
+            }
+            else
+            {
+                DriverStation.getInstance().getEnhancedIO().setDigitalOutput(13, true);
+                DriverStation.getInstance().getEnhancedIO().setDigitalOutput(15, true);
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -111,6 +148,7 @@ public class RobotTemplate extends SimpleRobot
      */
     public void operatorControl()
     {
+        reloadVariables();
         while (isOperatorControl() && isEnabled())
         {
             driveControl();
@@ -146,72 +184,21 @@ public class RobotTemplate extends SimpleRobot
 
     Timer t4 = new Timer();
     double goal;
-    double THREE_HOLD = 2;
-    double TWO_HOLD = 2;
-    double ONE_HOLD = 2;
+    double THREE_HOLD = .1;
+    double TWO_HOLD = .1;
+    double ONE_HOLD = .1;
 
     public void pneumaticControl()
     {
-        //        boolean btnPressed = false;
-        //        if (!btnPressed && (joystick.getRawButton(4) || joystick.getRawButton(3) || joystick.getRawButton(2)))
-        //        {
-        //            t4.start();
-        //            btnPressed = true;
-        //            if (joystick.getRawButton(4))
-        //            {
-        //                sol1.set(DoubleSolenoid.Value.kForward);
-        //                sol3.set(DoubleSolenoid.Value.kForward);
-        //                sol2.set(DoubleSolenoid.Value.kReverse);
-        //                while (t4.get() <= ONE_HOLD);
-        //            }
-        //            else if (joystick.getRawButton(3))
-        //            {
-        //                sol3.set(DoubleSolenoid.Value.kForward);
-        //                sol1.set(DoubleSolenoid.Value.kReverse);
-        //                sol2.set(DoubleSolenoid.Value.kReverse);
-        //                while (t4.get() <= TWO_HOLD);
-        //            }
-        //            else if (joystick.getRawButton(2))
-        //            {
-        //                goal = THREE_HOLD;
-        //                sol3.set(DoubleSolenoid.Value.kReverse);
-        //                sol1.set(DoubleSolenoid.Value.kReverse);
-        //                sol2.set(DoubleSolenoid.Value.kReverse);
-        //                while (t4.get() <= THREE_HOLD);
-        //            }
-        //            sol1.set(DoubleSolenoid.Value.kForward);
-        //            sol3.set(DoubleSolenoid.Value.kForward);
-        //            sol2.set(DoubleSolenoid.Value.kForward);
-        //        }
-        //        else
-        //        {
-        //            btnPressed = false;
-        //        }
 
-        if (joystick.getRawButton(4))
+        if (joystick.getRawButton(3))
         {
             t4.start();
             //tilt.set(DoubleSolenoid.Value.kReverse);
             sol3.set(DoubleSolenoid.Value.kReverse);
             sol1.set(DoubleSolenoid.Value.kReverse);
             sol2.set(DoubleSolenoid.Value.kReverse);
-            while (t4.get() < .1);
-            t4.stop();
-            t4.reset();
-            sol3.set(DoubleSolenoid.Value.kForward);
-            sol1.set(DoubleSolenoid.Value.kForward);
-            sol2.set(DoubleSolenoid.Value.kForward);
-            while (joystick.getRawButton(4));
-        }
-
-        else if (joystick.getRawButton(3))
-        {
-            t4.start();
-            //tilt.set(DoubleSolenoid.Value.kReverse);
-            sol3.set(DoubleSolenoid.Value.kReverse);
-            sol1.set(DoubleSolenoid.Value.kReverse);
-            sol2.set(DoubleSolenoid.Value.kReverse);
-            while (t4.get() < .15);
+            while (t4.get() < THREE_HOLD);
             t4.stop();
             t4.reset();
             sol3.set(DoubleSolenoid.Value.kForward);
@@ -220,14 +207,45 @@ public class RobotTemplate extends SimpleRobot
             while (joystick.getRawButton(3));
         }
 
-        else if (joystick.getRawButton(1))
+        else if (joystick.getRawButton(4))
         {
+            t4.start();
             //tilt.set(DoubleSolenoid.Value.kReverse);
-            sol3.set(DoubleSolenoid.Value.kForward);
+            sol3.set(DoubleSolenoid.Value.kReverse);
             sol1.set(DoubleSolenoid.Value.kReverse);
             sol2.set(DoubleSolenoid.Value.kReverse);
+            while (t4.get() < TWO_HOLD);
+            t4.stop();
+            t4.reset();
+            sol3.set(DoubleSolenoid.Value.kForward);
+            sol1.set(DoubleSolenoid.Value.kForward);
+            sol2.set(DoubleSolenoid.Value.kForward);
+            while (joystick.getRawButton(4));
         }
 
+        else if (joystick.getRawButton(1))
+        {
+            t4.start();
+            //tilt.set(DoubleSolenoid.Value.kReverse);
+            sol3.set(DoubleSolenoid.Value.kReverse);
+            sol1.set(DoubleSolenoid.Value.kReverse);
+            sol2.set(DoubleSolenoid.Value.kReverse);
+            while (t4.get() < ONE_HOLD);
+            t4.stop();
+            t4.reset();
+            sol3.set(DoubleSolenoid.Value.kForward);
+            sol1.set(DoubleSolenoid.Value.kForward);
+            sol2.set(DoubleSolenoid.Value.kForward);
+            while (joystick.getRawButton(1));
+        }
+//
+//        else if (joystick.getRawButton(1))
+//        {
+//            //tilt.set(DoubleSolenoid.Value.kReverse);
+//            sol3.set(DoubleSolenoid.Value.kForward);
+//            sol1.set(DoubleSolenoid.Value.kReverse);
+//            sol2.set(DoubleSolenoid.Value.kReverse);
+//        }
         else if (joystick.getRawButton(2))
         {
             //tilt.set(DoubleSolenoid.Value.kReverse);

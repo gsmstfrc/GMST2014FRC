@@ -1,5 +1,8 @@
 package edu.wpi.first.wpilibj.templates;
 
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -14,11 +17,17 @@ public class WebSocket
 
     boolean DEBUG = true;
 
+    boolean connected = true;
+
     SocketConnection s;
     InputStream is;
     OutputStream os;
     String key;
     WebServerClean.ConnectionHandler conHan;
+
+    Timer writeTimer = new Timer();
+    double lastWriteTime = 0;
+    double updateTime = .5;
 
     public WebSocket(WebServerClean.ConnectionHandler conHan, SocketConnection s, InputStream is, PrintStream os, String key)
     {
@@ -40,6 +49,7 @@ public class WebSocket
                     + "Sec-WebSocket-Accept: " + SHA1.encode(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11") + "\r\n"
                     + "\r\n";
             os.write(toWrite.getBytes());
+            connected = true;
         }
         catch (Exception e)
         {
@@ -102,9 +112,11 @@ public class WebSocket
                 ////System.out.println("" + data);
             }
         }
-        catch (Exception e)
+        catch (IOException e)
         {
-            //System.out.println("There was an error reading a frame.");
+            System.out.println("There was an error reading a frame.");
+            
+            connected = false;
         }
 
         return data;
@@ -223,6 +235,8 @@ public class WebSocket
         catch (Exception e)
         {
             e.printStackTrace();
+            System.out.println("bullshiznit happened that with wrinting thread yo.");
+            connected = false;
         }
     }
 
@@ -230,17 +244,31 @@ public class WebSocket
     {
         try
         {
-            while (true)
+            if (conHan.file.equalsIgnoreCase("/websockets/status"))
             {
-                String information = readNextData();
-                if (information.equalsIgnoreCase("true"))
+                Thread writeThread = new Thread()
                 {
-                    RobotTemplate.GoalDetected = true;
-                }
-                if (information.equalsIgnoreCase("false"))
+                    public void run()
+                    {
+                        writeTimer.start();
+                        while (connected)
+                            processStatusWrite();
+                    }
+                };
+                writeThread.start();
+            }
+            if (conHan.file.equalsIgnoreCase("/websockets/vision"))
+            {
+
+                Thread readThread = new Thread()
                 {
-                    RobotTemplate.GoalDetected = false;
-                }
+                    public void run()
+                    {
+                        while (connected)
+                            processVisionRead();
+                    }
+                };
+                readThread.start();
             }
         }
         catch (Exception e)
@@ -248,6 +276,39 @@ public class WebSocket
             e.printStackTrace();
         }
 
+    }
+
+    public void processVisionRead()
+    {
+        String message = readNextData();
+        if (message.equalsIgnoreCase("true"))
+            RobotTemplate.GoalDetected = true;
+        if (message.equalsIgnoreCase("false"))
+            RobotTemplate.GoalDetected = false;
+    }
+
+    public void processStatusWrite()
+    {
+        if (writeTimer.get() > lastWriteTime + updateTime)
+        {
+            lastWriteTime = writeTimer.get();
+            StringBuffer sb = new StringBuffer();
+            sb.append("{");
+            sb.append("\"frontLeftMotor\": ").append(RobotTemplate.frontLeft.get());
+            sb.append(",\"frontRightMotor\": ").append(RobotTemplate.frontRight.get());
+            sb.append(",\"backLeftMotor\": ").append(RobotTemplate.backLeft.get());
+            sb.append(",\"backRightMotor\": ").append(RobotTemplate.backRight.get());
+            sb.append(",\"rightIntake\": ").append(RobotTemplate.intake.get());
+            sb.append(",\"leftIntake\": ").append(RobotTemplate.intake2.get());
+            sb.append(",\"leftSolenoid\": ").append(RobotTemplate.sol3.get().value);
+            sb.append(",\"middleSolenoid\": ").append(RobotTemplate.sol2.get().value);
+            sb.append(",\"rightSolenoid\": ").append(RobotTemplate.sol1.get().value);
+            sb.append(",\"voltage\": ").append(DriverStation.getInstance().getBatteryVoltage());
+            sb.append(",\"threadCount\": ").append(Thread.activeCount());
+            sb.append(",\"memory\": ").append(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+            sb.append("}");
+            writeData(sb.toString());
+        }
     }
 
 }

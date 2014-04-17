@@ -212,7 +212,7 @@ public class WebServerClean implements Runnable
             //This thread is to allow the header to be constantly updated.
             //UPDATE: USING WHILE TRUE CAUSES HEADERS TO GET MESSED UP. AVOID DOING THIS.
             //------- ALLOW THE CLIENT TO MAKE AN ADDITIONAL CONNECTION, RATHER THATN JUST USING ONE.
-
+ 
             //while(true)
             //{
             readRequest();
