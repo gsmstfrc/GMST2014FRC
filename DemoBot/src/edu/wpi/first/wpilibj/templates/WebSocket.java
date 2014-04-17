@@ -16,7 +16,7 @@ public class WebSocket
 
     SocketConnection s;
     InputStream is;
-    PrintStream os;
+    OutputStream os;
     String key;
     WebServerClean.ConnectionHandler conHan;
 
@@ -39,7 +39,7 @@ public class WebSocket
                     + "Connection: Upgrade\r\nUpgrade: websocket\r\n"
                     + "Sec-WebSocket-Accept: " + SHA1.encode(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11") + "\r\n"
                     + "\r\n";
-            os.write(toWrite);
+            os.write(toWrite.getBytes());
         }
         catch (Exception e)
         {
@@ -99,12 +99,12 @@ public class WebSocket
                     payload[i] = (byte) (payload[i] ^ key[i % 4]);
                 }
                 data = new String(payload);
-                //System.out.println("" + data);
+                ////System.out.println("" + data);
             }
         }
         catch (Exception e)
         {
-            System.out.println("There was an error reading a frame.");
+            //System.out.println("There was an error reading a frame.");
         }
 
         return data;
@@ -113,25 +113,117 @@ public class WebSocket
     public void writeData(String toWrite)
     {
         int payloadLength = toWrite.length();
-        int firstByte = 129; //we are going to assume that the entire message fits into a single frame.
-        byte b1 = (byte) firstByte;
+        //byte b1 = (byte) ((byte) 0x81);//we are going to assume that the entire message fits into a single frame.
+        byte b1 = (byte) 0x81;
+        //System.out.println(Integer.toBinaryString(b1));
+        byte b2;
+        int secondByte = 0;
+        byte[] extendedLength = null;
 
-        int secondByte;
-        int extendedByte;
         if (payloadLength <= 125) //size in bytes.
         {
             secondByte = payloadLength;
+            extendedLength = null;
+            //System.out.println("length is " + payloadLength);
         }
 
         else if (payloadLength <= 65535) //size in bytes. just under 64 kilobyte max size.
         {
-
+            //System.out.println("length is " + payloadLength);
+            secondByte = 126;
+            short data = (short) payloadLength;
+            extendedLength = new byte[]
+            {
+                (byte) ((data >> 8) & 0xFF), (byte) (data & 0xFF)
+            };
         }
         else                            //
         {
-
+            //System.out.println("length is " + payloadLength);
+            secondByte = 127;
+            long data = (long) payloadLength;
+            extendedLength = new byte[]
+            {
+                (byte) ((data >> 48) & 0xFF),
+                (byte) ((data >> 40) & 0xFF),
+                (byte) ((data >> 32) & 0xFF),
+                (byte) ((data >> 24) & 0xFF),
+                (byte) ((data >> 16) & 0xFF),
+                (byte) ((data >> 8) & 0xFF),
+                (byte) (data & 0xFF)
+            };
         }
-
+        b2 = (byte) ((byte) secondByte);
+        //System.out.println("byte 2 = " + Integer.toBinaryString(b2));
+        //System.out.println("byte 1 = " + Integer.toBinaryString(b1));
+        try
+        {
+            byte[] arr;
+            if (extendedLength != null)
+            {
+                arr = new byte[2 + extendedLength.length + toWrite.length()];
+                arr[0] = (byte) (b1);
+                arr[1] = (byte) (b2);
+                if (extendedLength.length == 2)
+                {
+                    arr[2] = (byte) extendedLength[0];
+                    arr[3] = (byte) extendedLength[1];
+                    byte[] toWriteBytes = toWrite.getBytes();
+                    for (int i = 0; i < toWriteBytes.length; i++)
+                    {
+                        arr[i + 4] = toWriteBytes[i];
+                        //System.out.println(Integer.toBinaryString(arr[i + 4] & 0xFF));
+                    }
+                }
+                else
+                {
+                    arr[2] = (byte) extendedLength[0];
+                    arr[3] = (byte) extendedLength[1];
+                    arr[4] = (byte) extendedLength[2];
+                    arr[5] = (byte) extendedLength[3];
+                    byte[] toWriteBytes = toWrite.getBytes();
+                    for (int i = 6; i < toWriteBytes.length; i++)
+                    {
+                        arr[i + 4] = toWriteBytes[i];
+                        //System.out.println(Integer.toBinaryString(arr[i + 4] & 0xFF));
+                    }
+                }
+            }
+            else
+            {
+                arr = new byte[2 + toWrite.length()];
+                arr[0] = (byte) (b1);
+                arr[1] = (byte) (b2);
+                byte[] toWriteBytes = toWrite.getBytes();
+                //System.out.println();
+                //System.out.println(Integer.toBinaryString(arr[0] & 0xFF));
+                //System.out.println(Integer.toBinaryString(arr[1] & 0xFF));
+                //System.out.println();
+                for (int i = 0; i < toWriteBytes.length; i++)
+                {
+                    arr[i + 2] = toWriteBytes[i];
+                    //System.out.println(Integer.toBinaryString(arr[i + 2] & 0xFF));
+                }
+            }
+            os.write(arr);
+            //os.write(new byte[]{(byte)0b10000001,(byte)0b00000001,(byte)0b00000001});
+            //System.out.println("writing out!!");
+            os.flush();
+            //System.out.println();
+            //os.write((byte) (b1 & 0xFF));
+            //os.write((byte) (b2 & 0xFF));
+            //if (extendedLength != null)
+            //{
+            //    //System.out.println("writing extended bytes.");
+            //    os.write(extendedLength);
+            //}
+            ////System.out.println(Integer.toBinaryString(b1 & 0xFF) + " " + Integer.toBinaryString(b2 & 0xFF));
+            //os.write(toWrite.getBytes());
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public void run()
