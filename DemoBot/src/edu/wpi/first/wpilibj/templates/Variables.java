@@ -9,8 +9,11 @@ public class Variables
 {
 
     private static Hashtable variables = new Hashtable();
-    
-    public static String sortedKeys[] = new String[]{"maxXSpeed","maxYSpeed","maxTSpeed","ONEHOLD","TWOHOLD","THREEHOLD","accelerationValue","w_Port","w_NetworkBufferSize","w_DebugLog","a_movementSpeed","a_driveTime","a_waitForSettle","a_fireTime"};
+
+    public static String sortedKeys[] = new String[]
+    {
+        "maxXSpeed", "maxYSpeed", "maxTSpeed", "ONEHOLD", "TWOHOLD", "THREEHOLD", "accelerationValue", "intakeSpeed", "outtakeSpeed", "w_Port", "w_NetworkBufferSize", "w_DebugLog", "w_websocketUpdateInterval", "a_movementSpeed", "a_driveTime", "a_waitForSettle", "a_fireTime"
+    };
 
     public static boolean DEBUG = true;
 
@@ -83,6 +86,25 @@ public class Variables
             variables.put(key, Preferences.getInstance().getString(key, ""));
         }
         Utilities.debugLine("Variables.save(): LOADING!! " + v.toString(), DEBUG);
+        if (sortedKeys.length != variables.size())
+        {
+            String missingString = "";
+            Enumeration keys = variables.keys();
+            while (keys.hasMoreElements())
+            {
+                String key = (String) keys.nextElement();
+                boolean hasKey = false;
+                for (int i = 0; i < sortedKeys.length; i++)
+                    if (sortedKeys[i].equalsIgnoreCase(key))
+                        hasKey = true;
+                if(!hasKey)
+                    missingString += (key + "\n");
+            }
+            System.out.println("***********\n THERE ARE VARIABLES IN THE PREFRENCES FILE THAT ARE NOT IN THE ARRAY.\n"
+                    + "Variables that will not be accessable are:"
+                    + missingString
+                    + "\n ******************");
+        }
     }
 
     public static Hashtable getTable()

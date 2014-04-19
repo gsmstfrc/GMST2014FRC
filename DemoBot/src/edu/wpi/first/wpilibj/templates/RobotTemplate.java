@@ -31,6 +31,8 @@ public class RobotTemplate extends SimpleRobot
 
     public static Compressor comp;
 
+    public static int autonomousSetting = 1; //default
+
     Watchdog watchdog;
 
     AnalogChannel ultrasonic;
@@ -122,10 +124,16 @@ public class RobotTemplate extends SimpleRobot
         }
     }
 
+    double segments = 3.3 / 3;
+
     public void switchpanel()
     {
         try
         {
+            
+            double voltage = DriverStation.getInstance().getEnhancedIO().getAnalogIn(1) == 0 ? .1 : DriverStation.getInstance().getEnhancedIO().getAnalogIn(1);
+            autonomousSetting = (int)Math.ceil(voltage / segments);
+            
             if (GoalDetected)
             {
                 DriverStation.getInstance().getEnhancedIO().setDigitalOutput(13, false);
@@ -271,28 +279,10 @@ public class RobotTemplate extends SimpleRobot
         {
             tilt.set(DoubleSolenoid.Value.kOff);
         }
-//        if (foldedOut)
-//        {
-//            tilt.set(DoubleSolenoid.Value.kReverse);
-//        }
-//        else
-//        {
-//            tilt.set(DoubleSolenoid.Value.kReverse);
-//        }
-//        if(joystick.getRawButton(5) && releasedToggle)
-//        {
-//            foldedOut = !foldedOut;
-//        }
-//        if(joystick.getRawButton(5))
-//        {
-//            releasedToggle = false;
-//        }
-//        else
-//        {
-//            releasedToggle = true;
-//        }
-
     }
+
+    public static double intakeSpeed;
+    public static double outtakeSpeed;
 
     public void intakeControl()
     {
@@ -318,17 +308,11 @@ public class RobotTemplate extends SimpleRobot
     }
 
     boolean useOldCode = false;
-    double multiplier = 1;
+    public static double multiplier = 1;
 
     //@Override not supported
     public void driveControl()
     {
-
-        if (joystick.getRawButton(1))
-        {
-            Utilities.debugLine("" + ultrasonic.getValue(), DEBUG);
-            Timer.delay(.1);
-        }
 
         if (joystick.getRawButton(10))
         {
@@ -414,6 +398,76 @@ public class RobotTemplate extends SimpleRobot
     //@Override not supported
     public void autonomous()
     {
+        reloadVariables();
+        System.out.println("starting autonomous!");
+        System.out.println("autonomous movement speed = " + a_movementSpeed);
+        if (autonomousSetting == 1)
+            autonomous1();
+        else if (autonomousSetting == 2)
+            autonomous2();
+        else if (autonomousSetting == 3)
+            autonomous3();
+        System.out.println("ending autonomous!");
+    }
+
+    public void autonomous1()
+    {
+        t2.reset();
+        t2.start();
+        frontLeft.set(-a_movementSpeed);
+        frontRight.set(a_movementSpeed);
+        backRight.set(a_movementSpeed);
+        backLeft.set(-a_movementSpeed);
+        while (t2.get() < a_driveTime);
+        frontLeft.set(0);
+        frontRight.set(0);
+        backRight.set(0);
+        backLeft.set(0);
+        double goal = t2.get() + a_waitForSettle;
+        while (t2.get() < goal);
+        //tilt.set(DoubleSolenoid.Value.kReverse);
+        //goal = t2.get() + .75;
+        //while (t2.get() < goal);
+        sol3.set(DoubleSolenoid.Value.kReverse);
+        sol1.set(DoubleSolenoid.Value.kReverse);
+        sol2.set(DoubleSolenoid.Value.kReverse);
+        goal = t2.get() + a_fireTime;
+        while (t2.get() < goal);
+        sol3.set(DoubleSolenoid.Value.kForward);
+        sol1.set(DoubleSolenoid.Value.kForward);
+        sol2.set(DoubleSolenoid.Value.kForward);
+    }
+
+    public void autonomous2()
+    {
+        t2.reset();
+        t2.start();
+        frontLeft.set(-a_movementSpeed);
+        frontRight.set(a_movementSpeed);
+        backRight.set(a_movementSpeed);
+        backLeft.set(-a_movementSpeed);
+        while (t2.get() < a_driveTime);
+        frontLeft.set(0);
+        frontRight.set(0);
+        backRight.set(0);
+        backLeft.set(0);
+        double goal = t2.get() + a_waitForSettle;
+        while (t2.get() < goal);
+        //tilt.set(DoubleSolenoid.Value.kReverse);
+        //goal = t2.get() + .75;
+        //while (t2.get() < goal);
+        sol3.set(DoubleSolenoid.Value.kReverse);
+        sol1.set(DoubleSolenoid.Value.kReverse);
+        sol2.set(DoubleSolenoid.Value.kReverse);
+        goal = t2.get() + a_fireTime;
+        while (t2.get() < goal);
+        sol3.set(DoubleSolenoid.Value.kForward);
+        sol1.set(DoubleSolenoid.Value.kForward);
+        sol2.set(DoubleSolenoid.Value.kForward);
+    }
+
+    public void autonomous3()
+    {
         t2.reset();
         t2.start();
         frontLeft.set(-a_movementSpeed);
@@ -443,7 +497,7 @@ public class RobotTemplate extends SimpleRobot
     public void disabled()
     {
         t2.stop();
-        Utilities.debugLine("Time should be " + t2.get(), DEBUG);
+        //Utilities.debugLine("Time should be " + t2.get(), DEBUG);
     }
 
     /**
@@ -471,6 +525,8 @@ public class RobotTemplate extends SimpleRobot
             a_driveTime = Variables.getDouble("a_driveTime");
             a_waitForSettle = Variables.getDouble("a_waitForSettle");
             a_fireTime = Variables.getDouble("a_fireTime");
+            intakeSpeed = Variables.getDouble("intakeSpeed") == 0 ? .5 : Variables.getDouble("intakeSpeed");
+            outtakeSpeed = Variables.getDouble("outtakeSpeed") == 0 ? -1 : Variables.getDouble("outtakeSpeed");
         }
         catch (Exception e)
         {

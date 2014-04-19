@@ -38,6 +38,7 @@ public class WebSocket
         this.key = key;
         handshake();
         run();
+        updateTime = Variables.getDouble("w_websocketUpdateInterval") == 0 ? .5 : Variables.getDouble("w_websocketUpdateInterval");
     }
 
     public void handshake()
@@ -69,8 +70,14 @@ public class WebSocket
                 boolean extended = false;
                 int payloadLength = 0;
                 byte[] b = new byte[2];
-                while (is.available() == 0);
-                is.read(b);
+                //while (is.available() == 0);
+                b[0] = (byte) is.read();
+                if (b[0] == -1)
+                {
+                    connected = false;
+                    return null;
+                }
+                b[1] = (byte) is.read();
                 int maskp1 = (b[0] < 0 ? 256 + b[0] : b[0]); //convert to unsigned
                 if (maskp1 > 128)                            //if it's bigger than 128, then the first byte MUST BE 1. That means, the first bit is 1.
                     isFinished = true;
@@ -115,7 +122,6 @@ public class WebSocket
         catch (IOException e)
         {
             System.out.println("There was an error reading a frame.");
-            
             connected = false;
         }
 
@@ -124,52 +130,52 @@ public class WebSocket
 
     public void writeData(String toWrite)
     {
-        int payloadLength = toWrite.length();
-        //byte b1 = (byte) ((byte) 0x81);//we are going to assume that the entire message fits into a single frame.
-        byte b1 = (byte) 0x81;
-        //System.out.println(Integer.toBinaryString(b1));
-        byte b2;
-        int secondByte = 0;
-        byte[] extendedLength = null;
-
-        if (payloadLength <= 125) //size in bytes.
-        {
-            secondByte = payloadLength;
-            extendedLength = null;
-            //System.out.println("length is " + payloadLength);
-        }
-
-        else if (payloadLength <= 65535) //size in bytes. just under 64 kilobyte max size.
-        {
-            //System.out.println("length is " + payloadLength);
-            secondByte = 126;
-            short data = (short) payloadLength;
-            extendedLength = new byte[]
-            {
-                (byte) ((data >> 8) & 0xFF), (byte) (data & 0xFF)
-            };
-        }
-        else                            //
-        {
-            //System.out.println("length is " + payloadLength);
-            secondByte = 127;
-            long data = (long) payloadLength;
-            extendedLength = new byte[]
-            {
-                (byte) ((data >> 48) & 0xFF),
-                (byte) ((data >> 40) & 0xFF),
-                (byte) ((data >> 32) & 0xFF),
-                (byte) ((data >> 24) & 0xFF),
-                (byte) ((data >> 16) & 0xFF),
-                (byte) ((data >> 8) & 0xFF),
-                (byte) (data & 0xFF)
-            };
-        }
-        b2 = (byte) ((byte) secondByte);
-        //System.out.println("byte 2 = " + Integer.toBinaryString(b2));
-        //System.out.println("byte 1 = " + Integer.toBinaryString(b1));
         try
         {
+            int payloadLength = toWrite.length();
+            //byte b1 = (byte) ((byte) 0x81);//we are going to assume that the entire message fits into a single frame.
+            byte b1 = (byte) 0x81;
+            //System.out.println(Integer.toBinaryString(b1));
+            byte b2;
+            int secondByte = 0;
+            byte[] extendedLength = null;
+
+            if (payloadLength <= 125) //size in bytes.
+            {
+                secondByte = payloadLength;
+                extendedLength = null;
+                //System.out.println("length is " + payloadLength);
+            }
+
+            else if (payloadLength <= 65535) //size in bytes. just under 64 kilobyte max size.
+            {
+                //System.out.println("length is " + payloadLength);
+                secondByte = 126;
+                short data = (short) payloadLength;
+                extendedLength = new byte[]
+                {
+                    (byte) ((data >> 8) & 0xFF), (byte) (data & 0xFF)
+                };
+            }
+            else                            //
+            {
+                //System.out.println("length is " + payloadLength);
+                secondByte = 127;
+                long data = (long) payloadLength;
+                extendedLength = new byte[]
+                {
+                    (byte) ((data >> 48) & 0xFF),
+                    (byte) ((data >> 40) & 0xFF),
+                    (byte) ((data >> 32) & 0xFF),
+                    (byte) ((data >> 24) & 0xFF),
+                    (byte) ((data >> 16) & 0xFF),
+                    (byte) ((data >> 8) & 0xFF),
+                    (byte) (data & 0xFF)
+                };
+            }
+            b2 = (byte) ((byte) secondByte);
+            //System.out.println("byte 2 = " + Integer.toBinaryString(b2));
+            //System.out.println("byte 1 = " + Integer.toBinaryString(b1));
             byte[] arr;
             if (extendedLength != null)
             {
@@ -235,7 +241,7 @@ public class WebSocket
         catch (Exception e)
         {
             e.printStackTrace();
-            System.out.println("bullshiznit happened that with wrinting thread yo.");
+            System.out.println("bullshiznit happened that with writing thread yo.");
             connected = false;
         }
     }
@@ -251,8 +257,25 @@ public class WebSocket
                     public void run()
                     {
                         writeTimer.start();
+                        Thread waitForEnd = new Thread()
+                        {
+                            public void run()
+                            {
+                                try
+                                {
+                                    while (is.read() != -1);
+                                    connected = false;
+                                }
+                                catch (Exception e)
+                                {
+                                    connected = false;
+                                }
+                            }
+                        };
+                        waitForEnd.start();
                         while (connected)
                             processStatusWrite();
+                        System.out.println("Closing write Thread");
                     }
                 };
                 writeThread.start();
@@ -266,6 +289,7 @@ public class WebSocket
                     {
                         while (connected)
                             processVisionRead();
+                        System.out.println("Closing Read Thread");
                     }
                 };
                 readThread.start();
@@ -281,10 +305,13 @@ public class WebSocket
     public void processVisionRead()
     {
         String message = readNextData();
-        if (message.equalsIgnoreCase("true"))
-            RobotTemplate.GoalDetected = true;
-        if (message.equalsIgnoreCase("false"))
-            RobotTemplate.GoalDetected = false;
+        if (message != null)
+        {
+            if (message.equalsIgnoreCase("true"))
+                RobotTemplate.GoalDetected = true;
+            if (message.equalsIgnoreCase("false"))
+                RobotTemplate.GoalDetected = false;
+        }
     }
 
     public void processStatusWrite()
@@ -298,14 +325,21 @@ public class WebSocket
             sb.append(",\"frontRightMotor\": ").append(RobotTemplate.frontRight.get());
             sb.append(",\"backLeftMotor\": ").append(RobotTemplate.backLeft.get());
             sb.append(",\"backRightMotor\": ").append(RobotTemplate.backRight.get());
-            sb.append(",\"rightIntake\": ").append(RobotTemplate.intake.get());
-            sb.append(",\"leftIntake\": ").append(RobotTemplate.intake2.get());
+            sb.append(",\"intake\": ").append(RobotTemplate.intake2.get());
+            sb.append(",\"tilt\": ").append(RobotTemplate.tilt.get().value);
             sb.append(",\"leftSolenoid\": ").append(RobotTemplate.sol3.get().value);
             sb.append(",\"middleSolenoid\": ").append(RobotTemplate.sol2.get().value);
             sb.append(",\"rightSolenoid\": ").append(RobotTemplate.sol1.get().value);
             sb.append(",\"voltage\": ").append(DriverStation.getInstance().getBatteryVoltage());
             sb.append(",\"threadCount\": ").append(Thread.activeCount());
             sb.append(",\"memory\": ").append(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+            sb.append(",\"autonomousSetting\": ").append(RobotTemplate.autonomousSetting);
+            sb.append(",\"outtakeSpeed\": ").append(RobotTemplate.outtakeSpeed);
+            sb.append(",\"driveReversed\": ").append(RobotTemplate.multiplier);
+            sb.append(",\"time\": ").append(DriverStation.getInstance().getMatchTime());
+            sb.append(",\"alliance\": \"").append(DriverStation.getInstance().getAlliance().name).append("\"");
+            sb.append(",\"position\": \"").append(DriverStation.getInstance().getLocation()).append("\"");
+            sb.append(",\"compressor\": \"").append(RobotTemplate.comp.enabled()).append("\"");
             sb.append("}");
             writeData(sb.toString());
         }

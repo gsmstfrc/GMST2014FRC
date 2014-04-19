@@ -233,7 +233,11 @@ public class WebServerClean implements Runnable
             {
                 if(!headerFields.containsKey("Sec-WebSocket-Key"))
                     Utilities.debug("There key Sec-WebSocket-Key does not exist. can not create web socket.", DEBUG);
-                WebSocket ws = new WebSocket(this,sc,in,out,(String)headerFields.get("Sec-WebSocket-Key"));
+                try
+                {
+                    WebSocket ws = new WebSocket(this,sc,in,out,(String)headerFields.get("Sec-WebSocket-Key"));
+                }
+                catch(Exception e){e.printStackTrace();}    
                 return;
             }
             
