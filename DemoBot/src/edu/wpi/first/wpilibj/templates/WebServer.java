@@ -1,17 +1,20 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+/* This is a WebServer that allows us to modify variables stored
+ * in the Variables Class using the HTTP protocol and a Web Browser
+ * Note: The only browsers tested, are Chrome and Safari.
+ *
+ * @author John McDonough, Brandon Tuttle
+ * Gwinnett School of Mathematics, Science, and Technology
+ * GSMST FRC 2014
  */
 package edu.wpi.first.wpilibj.templates;
 
-import com.sun.squawk.microedition.io.FileConnection;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.util.Enumeration;
 import java.util.Hashtable;
-import java.util.Vector;
 import javax.microedition.io.Connector;
 import javax.microedition.io.ServerSocketConnection;
 import javax.microedition.io.SocketConnection;
@@ -23,324 +26,458 @@ import javax.microedition.io.SocketConnection;
 public class WebServer implements Runnable
 {
 
-    public void sendMainPage(InputStream in, OutputStreamWriter out)
+    static int PORT;
+    static boolean DEBUG;
+    static int BUFFER_SIZE;
+
+    public boolean running = false;
+    public static WebServer instance;
+    public static Thread serverThread;
+
+    //=-=-=-=-=-=-=-=-=-=-= STATIC METHODS AND CONSTRUCTORS -=-=-=-=-=-=-=-=-=-=-=
+    public WebServer()
     {
-        try
-        {
-            sendPage(in, out, "index.html");
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
+        if (!Variables.exists("w_DebugLog"))
+            Variables.setVariable("w_DebugLog", true);
+
+        if (!Variables.exists("w_Port"))
+            Variables.setVariable("w_Port", 80);
+
+        if (!Variables.exists("w_NetworkBufferSize"))
+            Variables.setVariable("w_NetworkBufferSize", 2048);
+
+        PORT = Variables.getInt("w_Port");
+        DEBUG = Variables.getBoolean("w_DebugLog");
+        BUFFER_SIZE = Variables.getInt("w_NetworkBufferSize");
     }
-
-    public String readFile(String fileName)
-    {
-        String s = "";
-        //int b;
-        //boolean test = true;
-        int bufferSize = 4096;
-        byte[] buffer = new byte[bufferSize];
-        try
-        {
-            System.out.println("Trying to read in file " + fileName);
-            FileConnection connection = (FileConnection) Connector.open("file:///webserver" + fileName, Connector.READ);
-            InputStream input = connection.openInputStream();
-            //b = input.read();
-            System.out.println(input.available());
-            int read = 0;
-            while ((read = input.read(buffer, 0, bufferSize)) != -1)
-            {
-                s = s.concat(new String(buffer));
-                buffer = new byte[bufferSize];
-            }
-            //System.out.println("String representation of the file should be " + s);
-        }
-        catch (Exception error)
-        {
-            //test = false;
-            System.out.println(error.toString());
-        }
-        finally
-        {
-            return s;
-        }
-    }
-
-    public void sendPage(InputStream in, OutputStreamWriter out, String filePath)
-    {
-        try
-        {
-            out.write("HTTP/1.1 200 OK\r\n\r\n");
-            //out.write("filePath = " + filePath);
-            String toBeReplaced = readFile(filePath);
-
-            if (!filePath.endsWith(".html"))
-            {
-                String replaced = replace(toBeReplaced, "{AUTONOMOUS}", generateAutonomousForm());
-                replaced = replace(replaced, "{TELEOP}", generateTeleopForm());
-                replaced = replace(replaced, "{VOLTAGE}", "" + DriverStation.getInstance().getBatteryVoltage());
-                out.write(replaced);
-            }
-            else
-            {
-                out.write(toBeReplaced);
-            }
-            System.out.println("written out.");
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-    }
-
-    public String generateAutonomousForm()
-    {
-
-        String form = "";//"<form method=\"POST\" action=\"/\">";
-        Hashtable variables = Variables.getTable();
-        if (variables.get("testMe") == null)
-            variables.put("testMe", "Test1");
-        if (variables.get("a_doShit") == null)
-            variables.put("a_doShit", "10");
-        if (variables.get("finalTest") == null)
-            variables.put("finalTest", "asdf");
-
-        Enumeration keys = variables.keys();
-
-        while (keys.hasMoreElements())
-        {
-            String key = (String) keys.nextElement();
-            if (key.startsWith("a_"))
-                form += "<tr>"
-                        + "<td>" + key + ": </td>"
-                        + "<td><input type=\"text\" name=\"" + key + "\" value=\"" + variables.get(key) + "\" /></td>\n"
-                        + "</tr>";
-        }
-        //form += "<input type=\"submit\" />\n </form>";
-        return form;
-    }
-
-    public String generateTeleopForm()
-    {
-
-        String form = "";//"<form method=\"POST\" action=\"/\">";
-        Hashtable variables = Variables.getTable();
-
-        Enumeration keys = variables.keys();
-
-        while (keys.hasMoreElements())
-        {
-            String key = (String) keys.nextElement();
-            if (!key.startsWith("a_"))
-                form += "<tr>"
-                        + "<td>" + key + ": </td>"
-                        + "<td><input type=\"text\" name=\"" + key + "\" value=\"" + variables.get(key) + "\" /></td>\n"
-                        + "</tr>";
-        }
-        //form += "<input type=\"submit\" />\n </form>";
-        return form;
-    }
-
-    final int bufferSize = 1024;
-
-    public void readRequest(InputStream in, OutputStreamWriter out)
-    {
-        try
-        {
-            //InputStreamReader in = new InputStreamReader(sc.openInputStream());
-            String line = "";
-
-            char c;
-            int toRead = -1;
-            System.out.println("requestWasMade!");
-            //header is done when \r\n\r\n is read.
-            while (true)
-            {
-                //BROKEN CODE!!! IF IT HANGS, IT'S BECAUSE OF THIS!!!
-                //IF IT'S FINISHED READING!!
-                if (in.available() <= 0 && line.indexOf("\r\n\r\n") > -1)
-                {
-                    if (line.substring(0, "GET".length()).equalsIgnoreCase("GET"))
-                    {
-                        int startSubstring = line.indexOf("GET ") + "GET ".length();
-                        int endSubstring = line.indexOf("HTTP", startSubstring);
-                        String filePath = line.substring(startSubstring, endSubstring);
-                        if (filePath.trim().equalsIgnoreCase("/"))
-                            sendMainPage(in, out);
-                        else
-                            sendPage(in, out, filePath);
-                    }
-                    if (!line.substring(0, "POST".length()).equalsIgnoreCase("POST"))
-                    {
-                        break;
-                    }
-                    int startSubstring = line.indexOf("Content-Length: ") + "Content-Length: ".length();
-                    int endSubstring = line.indexOf("\r", startSubstring);
-                    System.out.println("Start at " + startSubstring + " and end at " + endSubstring + " and grabbed " + line.substring(startSubstring, endSubstring));
-                    toRead = Integer.parseInt(line.substring(startSubstring, endSubstring));
-                    String toParse = line.substring(line.indexOf("\r\n\r\n") + "\r\n\r\n".length());
-                    System.out.println(toParse);
-                    parseContent(toParse);
-                    Variables.save();
-                    //sendMainPage(in, out);
-
-                    //THEORETICAL CODE THIS MAY NOT WORK!!!
-                    if (line.indexOf("POST ") == -1)
-                        sendMainPage(in, out);
-                    int startSubstring2 = line.indexOf("POST ") + "POST ".length();
-                    int endSubstring2 = line.indexOf("HTTP", startSubstring2);
-                    String filePath = line.substring(startSubstring2, endSubstring2);
-                    System.out.println("wants to send out file in post " + filePath);
-                    if (filePath.trim().equalsIgnoreCase("/"))
-                        sendMainPage(in, out);
-                    else
-                        sendPage(in, out, filePath);
-                    System.out.println("breaking the loop");
-                    break;
-                }
-                byte[] buffer = new byte[bufferSize];
-                if (in.available() > 0)
-                {
-                    int read;
-                    if (in.available() > bufferSize)
-                    {
-                        read = in.read(buffer, 0, bufferSize);
-                    }
-                    else
-                    {
-                        buffer = new byte[in.available()];
-                        read = in.read(buffer, 0, buffer.length);
-                    }
-                    if (read == -1)
-                    {
-                        System.out.println("error/done");
-                    }
-                    else
-                    {
-                        line = line.concat(new String(buffer));
-                        System.out.print(new String(buffer) + "!! buffer is " + read + " !!");
-                    }
-                }
-                else
-                {
-                    //System.out.write("reader not ready!!!");
-                }
-            }
-            //System.out.println("IT BROKE THE LOOP!!");
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-    }
-
-    public void parseContent(String string)
-    {
-        System.out.println(string);
-        String[] parametersToBeSplitAgain = split(string, "&");
-        Hashtable table = new Hashtable();
-        for (int i = 0; i < parametersToBeSplitAgain.length; i++)
-        {
-            String[] split = split(parametersToBeSplitAgain[i], "=");
-            table.put(split[0], split[1]);
-        }
-        System.out.println(table);
-        Variables.setTable(table);
-    }
-
-    public String[] split(String original, String separator)
-    {
-        Vector nodes = new Vector();
-        // Parse nodes into vector
-        int index = original.indexOf(separator);
-        while (index >= 0)
-        {
-            nodes.addElement(original.substring(0, index));
-            original = original.substring(index + separator.length());
-            index = original.indexOf(separator);
-        }
-        // Get the last node
-        nodes.addElement(original);
-
-        // Create split string array
-        String[] result = new String[nodes.size()];
-        if (nodes.size() > 0)
-        {
-            for (int loop = 0; loop < nodes.size(); loop++)
-            {
-                result[loop] = (String) nodes.elementAt(loop);
-                System.out.println(result[loop]);
-            }
-
-        }
-        return result;
-    }
-
-    public String replace(String original, String searchString, String replaceString)
-    {
-        int beginning = -1;
-        int end = -1;
-
-        beginning = original.indexOf(searchString);
-        end = beginning + searchString.length();
-        if (beginning == -1 || end == -1)
-            return original;
-
-        String p1 = original.substring(0, beginning);
-        String p2 = original.substring(end);
-        return p1 + replaceString + p2;
-    }
+    //=-=-=-=-=-=-=-=-=- END STATIC METHODS AND CONSTRUCTORS -=-=-=-=-=-=-=-=-=-=-=
 
     public void run()
     {
-        System.out.println("Runing Web Server");
-        ServerSocketConnection ssc;
+        Utilities.debugLine("WebServer.run(): Runing Web Server", DEBUG);
 
+        running = true;
+
+        ServerSocketConnection ssc;
         try
         {
-            ssc = (ServerSocketConnection) Connector.open("socket://:80");
-            SocketConnection sc = null;
-            while (true)
+            ssc = (ServerSocketConnection) Connector.open("socket://:" + PORT);
+
+            do
             {
+                Utilities.debugLine("WebServer.run(): Socket Opened, Waiting for Connection...", DEBUG);
+                SocketConnection sc = null;
                 sc = (SocketConnection) ssc.acceptAndOpen();
-                Thread t = new ThreadHandler(sc);
+                Thread t = new Thread(new ConnectionHandler(sc));
+                t.setPriority(Thread.MIN_PRIORITY);
                 t.start();
+
+//--------------------------------------- DEBUG THREAD NUMBER ---------------------------------
+                try
+                {
+                    System.out.println("Active Threads: " + Thread.activeCount());
+                }
+                catch (Exception e)
+                {
+                    System.out.println("There was an eror getting the thread count.");
+                }
+//--------------------------------------- DEBUG THREAD NUMBER ---------------------------------
+
             }
+            while (running);
+            ssc.close();
         }
+
         catch (Exception e)
         {
-            e.printStackTrace();
+            Utilities.debugLine(e.toString() + e.getMessage(), true);
         }
     }
 
-    class ThreadHandler extends Thread
+    //This class handles threading allowing for multiple connections.
+    class ConnectionHandler implements Runnable
     {
 
         SocketConnection sc;
+        InputStream in;
+        PrintStream out;
+        boolean closed = false;
 
-        public ThreadHandler(SocketConnection sc)
+        //Reading in data.
+        public String header = "";
+        public String content;
+        public String method;
+        public String file;
+        public Hashtable headerFields;
+        //Response data
+        String responseHeader = "";
+        String document = "";
+
+        Timer t1 = new Timer();
+        double lastTime = 0;
+
+        public ConnectionHandler(SocketConnection sc)
         {
             this.sc = sc;
+            try
+            {
+                this.in = sc.openInputStream();
+                this.out = new PrintStream(sc.openOutputStream());
+            }
+            catch (Exception e)
+            {
+                Utilities.debugLine("ConnectionHandler Constructor: Unable to open streams.", DEBUG);
+            }
+            Utilities.debugLine("ConnectionHandler Constructor: Connection Made.", DEBUG);
+        }
+
+        public String generateAutonomousForm()
+        {
+
+            String form = "";//"<form method=\"POST\" action=\"/\">";
+            Hashtable variables = Variables.getTable();
+            if (variables.get("testMe") == null)
+                variables.put("testMe", "Test1");
+            if (variables.get("a_doShit") == null)
+                variables.put("a_doShit", "10");
+            if (variables.get("finalTest") == null)
+                variables.put("finalTest", "asdf");
+
+            Enumeration keys = variables.keys();
+
+            for (int i = 0; i < Variables.sortedKeys.length; i++)
+            {
+                String key = (String) Variables.sortedKeys[i];
+                if (key.startsWith("a_") && key.length() > 0)
+                    form += "<tr>"
+                            + "<td>" + key + ": </td>"
+                            + "<td><input type=\"text\" name=\"" + key + "\" value=\"" + variables.get(key) + "\" /></td>\n"
+                            + "</tr>";
+            }
+            //form += "<input type=\"submit\" />\n </form>";
+            return form;
+        }
+
+        public String generateTeleopForm()
+        {
+
+            String form = "";//"<form method=\"POST\" action=\"/\">";
+            Hashtable variables = Variables.getTable();
+            try
+            {
+                for (int i = 0; i < Variables.sortedKeys.length; i++)
+                {
+                    String key = (String) Variables.sortedKeys[i];
+                    if (!key.startsWith("a_") && !key.startsWith("w_") && key.length() > 0)
+                        form += "<tr>"
+                                + "<td>" + key + ": </td>"
+                                + "<td><input type=\"text\" name=\"" + key + "\" value=\"" + variables.get(key) + "\" /></td>\n"
+                                + "</tr>";
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+            //form += "<input type=\"submit\" />\n </form>";
+            return form;
+        }
+
+        public String generateSystemForm()
+        {
+
+            String form = "";//"<form method=\"POST\" action=\"/\">";
+            Hashtable variables = Variables.getTable();
+            try
+            {
+                for (int i = 0; i < Variables.sortedKeys.length; i++)
+                {
+                    String key = (String) Variables.sortedKeys[i];
+                    if (key.startsWith("w_") && key.length() > 0)
+                        form += "<tr>"
+                                + "<td>" + key + ": </td>"
+                                + "<td><input type=\"text\" name=\"" + key + "\" value=\"" + variables.get(key) + "\" /></td>\n"
+                                + "</tr>";
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+            //form += "<input type=\"submit\" />\n </form>";
+            return form;
         }
 
         public void run()
         {
+            //This thread is to allow the header to be constantly updated.
+            //UPDATE: USING WHILE TRUE CAUSES HEADERS TO GET MESSED UP. AVOID DOING THIS.
+            //------- ALLOW THE CLIENT TO MAKE AN ADDITIONAL CONNECTION, RATHER THATN JUST USING ONE.
+
+            //while(true)
+            //{
+            readRequest();
+            //}
+
+        }
+
+        //4th step in making the connection
+        public void process()
+        {
+
+            if (method.equalsIgnoreCase("POST"))
+            {
+                parsePost();
+            }
+
+            if (headerFields.containsKey("Upgrade") && ((String) headerFields.get("Upgrade")).equalsIgnoreCase("websocket"))
+            {
+                if (!headerFields.containsKey("Sec-WebSocket-Key"))
+                    Utilities.debug("There key Sec-WebSocket-Key does not exist. can not create web socket.", DEBUG);
+                try
+                {
+                    WebSocket ws = new WebSocket(this, sc, in, out, (String) headerFields.get("Sec-WebSocket-Key"));
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+                return;
+            }
+
+            sendDocument();
+
+        }
+
+        public void sendDocument()
+        {
             try
             {
-                InputStream in = (sc.openInputStream());
-                OutputStreamWriter out = new OutputStreamWriter(sc.openOutputStream());
-                readRequest(in, out);
-                //sendHTML(in,out);
-                out.close();
+                Utilities.debugLine("WebServer.sendDocument(): The file is " + file, DEBUG);
+                responseHeader += "HTTP/1.1 200 OK\r\n";
+
+                if (file.equalsIgnoreCase("/"))
+                {
+                    Utilities.debugLine("WebServer.sendDocument(): CASE / The file is " + "/index.html", DEBUG);
+                    file = "/index.html";
+                    document = Utilities.stringFromFile(file);
+                }
+
+                else if (file.equalsIgnoreCase("/debug.txt"))
+                {
+                    Utilities.debugLine("WebServer.sendDocument(): CASE DEBUG.txt The file is " + "/debug.txt", DEBUG);
+                    document = Utilities.stringReplace(Utilities.debug.toString(), "\n", "\n<br>");
+                }
+                else if (file.equalsIgnoreCase("/cleardebug.txt"))
+                {
+                    Utilities.clearDebug();
+                    Utilities.debugLine("WebServer.sendDocument(): CASE DEBUG.txt The file is " + "/debug.txt", DEBUG);
+                    document = Utilities.stringReplace(Utilities.debug.toString(), "\n", "\n<br>");
+                }
+
+                else
+                {
+                    Utilities.debugLine("WebServer.sendDocument(): CASE ELSE The file read is " + file, DEBUG);
+                    document = Utilities.stringFromFile(file);
+                }
+
+                if (file.endsWith(".html"))
+                {
+                    document = parseDocument(Utilities.stringFromFile("/header.html") + document);
+                }
+
+                if (file.endsWith(".js"))
+                {
+                    responseHeader += "Cache-Control: public" + "\r\n";
+                }
+
+                responseHeader += "Content-Length: " + document.length() + "\r\n\r\n";
+
+                responseHeader += document;
+                out.print(responseHeader);
+                out.flush();
+                //responseHeader = "";
+                close();
+            }
+            catch (Exception e)
+            {
+                sendError();
+            }
+        }
+
+        public void close()
+        {
+            out.flush();
+            out.close();
+            try
+            {
                 in.close();
                 sc.close();
             }
             catch (Exception e)
             {
-                System.out.println("exception");
+                Utilities.debugLine("WebServer.close(): Killing connection.", DEBUG);
             }
+        }
+
+        public void sendError()
+        {
+            try
+            {
+                responseHeader = "HTTP/1.1 400 Bad Request\r\n\r\n";
+                out.print(responseHeader);
+                out.close();
+                in.close();
+                sc.close();
+                closed = true;
+            }
+            catch (Exception e)
+            {
+                System.out.println("Unable to sendErrorPage. in || sc could not be closed, yo.");
+            }
+        }
+
+        public String parseDocument(String document)
+        {
+            document = Utilities.stringReplace(document, "{AUTONOMOUS}", generateAutonomousForm());
+            document = Utilities.stringReplace(document, "{TELEOP}", generateTeleopForm());
+            document = Utilities.stringReplace(document, "{SYSTEM}", generateSystemForm());
+            document = Utilities.stringReplace(document, "{VOLTAGE}", "" + DriverStation.getInstance().getBatteryVoltage());
+
+            return document;
+        }
+
+        //5th step in making the connection
+        public void parsePost()
+        {
+            Hashtable table = new Hashtable();
+            try
+            {
+
+                String[] pairs = Utilities.splitString(content, "&");
+                for (int i = 0; i < pairs.length; i++)
+                {
+                    String[] pair = Utilities.splitString(pairs[i], "=");
+                    table.put(pair[0], pair[1]);
+                }
+                Variables.updateTableWithTable(table);
+                Variables.save();
+            }
+            catch (Exception e)
+            {
+                Utilities.debugLine("WebServer.parsePost(): ERROR" + content, DEBUG);
+            }
+            Utilities.debugLine("WebServer.parsePost(): Variables were " + content, DEBUG);
+            Utilities.debugLine("WebServer.parsePost(): HASHTABLE = " + table.toString(), DEBUG);
+
+        }
+
+        //3rd step in making the connection
+        public void readContent()
+        {
+            if (headerFields.containsKey("Content-Length") && !headerFields.get("Content-Length").equals("0"))
+            {
+                Utilities.debugLine("WebServer.readContent(): it did contain Content-Length and it wasn't equal to 0.", DEBUG);
+                int contentLength = Integer.parseInt((String) headerFields.get("Content-Length"));
+                Utilities.debugLine("WebServer.readContent(): content-Length = " + contentLength, DEBUG);
+                byte[] contentBytes = new byte[contentLength];
+                try
+                {
+                    int read = in.read(contentBytes);
+                    while (read < contentLength)
+                    {
+                        read += in.read(contentBytes, read, contentLength - read);
+                    }
+                    content = new String(contentBytes);
+                }
+                catch (Exception e)
+                {
+                    Utilities.debugLine("ConnectionHandler.readContent():"
+                            + " there was a problem reading the content of length " + contentLength, DEBUG);
+                    sendError();
+                }
+            }
+            else
+            {
+                Utilities.debugLine("WebServer.readContent(): contains Content-Length =  "
+                        + headerFields.containsKey("Content-Length")
+                        + "\nContent-Length = " + headerFields.get("Content-Length"), DEBUG);
+            }
+        }
+
+        //2nd step in making the connection
+        public void parseHeader()
+        {
+
+            Hashtable table = new Hashtable();
+            String[] lines = Utilities.splitString(header, "\r\n"); //Break everything into lines
+            String[] line1 = Utilities.splitString(header, " ");    //Break the 1st header line Ex: GET / HTTP/1.1
+            method = line1[0].trim();
+            file = line1[1].trim();
+            Utilities.debugLine("WebServer.parseHeader(): " + lines[0], DEBUG);
+
+            //For the remainder of the headers, parse the requestFields.
+            for (int i = 1; i < lines.length - 1; i++)
+            {
+                String[] tempLine = Utilities.splitStringOnce(lines[i], ":");
+                table.put(tempLine[0].trim(), tempLine[1].trim());
+            }
+            headerFields = table;
+        }
+
+        //1st step in making the connection
+        public void readRequest()
+        {
+            t1.start();
+            StringBuffer sb = new StringBuffer(BUFFER_SIZE);
+            char c;
+            int sequentialBreaks = 0;
+            while (true)
+            {
+                try
+                {
+                    if (in.available() > 0)
+                    {
+                        c = (char) in.read();
+
+                        //keep track of the number of \r or \n s read in a row.
+                        if (c != '\n' && c != '\r')
+                            sequentialBreaks = 0;
+                        else
+                            sequentialBreaks++;
+
+                        //If there is an error, or we read the \r\n\r\n EOF, break the read loop.
+                        //We don't want to read too far.
+                        if (c == -1 || sequentialBreaks == 4)
+                            break;
+                        else
+                            sb.append(c);
+                    }
+                }
+                catch (Exception e)
+                {
+                    sendError();
+                }
+            }
+            header += sb.toString().trim();
+            Utilities.debugLine("WebServer.readRequest(): Header was \n" + header, DEBUG);
+
+            Utilities.debugLine("WebServer read bytes completed in " + t1.get(), running);
+            lastTime = t1.get();
+
+            parseHeader();
+
+            Utilities.debugLine("WebServer parse header completed in " + (t1.get() - lastTime), running);
+            lastTime = t1.get();
+
+            readContent();
+
+            Utilities.debugLine("WebServer parseHeader completed in " + (t1.get() - lastTime), running);
+            lastTime = t1.get();
+
+            process();
+
+            Utilities.debugLine("WebServer processing and reply completed in " + (t1.get() - lastTime), running);
         }
     }
 
