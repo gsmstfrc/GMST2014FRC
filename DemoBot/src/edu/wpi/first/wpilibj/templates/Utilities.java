@@ -6,9 +6,7 @@
 package edu.wpi.first.wpilibj.templates;
 
 import com.sun.squawk.microedition.io.FileConnection;
-import java.io.DataOutputStream;
 import java.io.InputStream;
-import java.io.PrintStream;
 import java.util.Vector;
 import javax.microedition.io.Connector;
 
@@ -50,34 +48,49 @@ public class Utilities
 //        }
     }
 
+    public static boolean fileOpen = false;
+
     public static String stringFromFile(String fileName2)
     {
-        int b = 0;
         StringBuffer sb = new StringBuffer(BUFFER_SIZE);
         FileConnection connection = null;
+        while (fileOpen)
+        {
+            try
+            {
+                Thread.sleep(20);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
         try
         {
+            fileOpen = true;
             connection = (FileConnection) Connector.open("file:///webserver" + fileName2, Connector.READ);
             if (!connection.exists())
             {
                 connection.close();
+                throw new java.io.IOException("File " + fileName2 + " does not exist!");
             }
             else
             {
                 InputStream input = connection.openDataInputStream();
-                while (b != -1)
+                byte[] chars = new byte[BUFFER_SIZE];
+                int read;
+                while ((read = input.read(chars)) != -1)
                 {
-                    //System.out.print((char) b);
-                    b = input.read();
-                    if (b != -1)
-                        sb.append((char) b);
+                    sb.append(new String(chars, 0, read));
                 }
                 input.close();
                 connection.close();
+                fileOpen = false;
             }
         }
         catch (Exception error)
         {
+            fileOpen = false;
             Utilities.debugLine("Utilities.stringFromFile(" + fileName2 + "): " + error.toString(), DEBUG);
         }
         finally
@@ -85,10 +98,16 @@ public class Utilities
             try
             {
                 connection.close();
+                fileOpen = false;
             }
-            catch(Exception e){Utilities.debugLine("Utilities.stringFromFile(" + fileName2 + "): SHIT IS BROKEN!!! FILE CAAN'T CLOSE", DEBUG);}
+            catch (Exception e)
+            {
+                Utilities.debugLine("Utilities.stringFromFile(" + fileName2 + "): SHIT IS BROKEN!!! FILE CAN'T CLOSE", DEBUG);
+                fileOpen = false;
+            }
         }
         Utilities.debugLine("Utilities.stringFromFile(" + fileName2 + "): Finished reading the file!", DEBUG);
+        fileOpen = false;
         return sb.toString().trim();
     }
 

@@ -77,7 +77,7 @@ public class RobotTemplate extends SimpleRobot
 
             //Thread updater = new Thread(new SmartDashboardUpdater());
             //updater.start();
-            Thread piUpdater = new Thread(new WebServerClean());
+            Thread piUpdater = new Thread(new WebServer());
             piUpdater.start();
             Variables.load();
             Thread switchpanel = new Thread()
@@ -130,10 +130,10 @@ public class RobotTemplate extends SimpleRobot
     {
         try
         {
-            
-            double voltage = DriverStation.getInstance().getEnhancedIO().getAnalogIn(1) == 0 ? .1 : DriverStation.getInstance().getEnhancedIO().getAnalogIn(1);
-            autonomousSetting = (int)Math.ceil(voltage / segments);
-            
+
+            double voltage = DriverStation.getInstance().getEnhancedIO().getAnalogIn(1);
+            autonomousSetting = (int) Math.ceil(voltage / segments) == 0 ? 1 : (int) Math.ceil(voltage / segments);
+
             if (GoalDetected)
             {
                 DriverStation.getInstance().getEnhancedIO().setDigitalOutput(13, false);
@@ -394,6 +394,7 @@ public class RobotTemplate extends SimpleRobot
     double a_driveTime = 1.6;
     double a_waitForSettle = .25;
     double a_fireTime = 1;
+    double a_visionTimeout = 5;
 
     //@Override not supported
     public void autonomous()
@@ -410,88 +411,109 @@ public class RobotTemplate extends SimpleRobot
         System.out.println("ending autonomous!");
     }
 
-    public void autonomous1()
+    public void autonomous1() //autonomous withOUT vision.
     {
-        t2.reset();
-        t2.start();
-        frontLeft.set(-a_movementSpeed);
-        frontRight.set(a_movementSpeed);
-        backRight.set(a_movementSpeed);
-        backLeft.set(-a_movementSpeed);
-        while (t2.get() < a_driveTime);
-        frontLeft.set(0);
-        frontRight.set(0);
-        backRight.set(0);
-        backLeft.set(0);
-        double goal = t2.get() + a_waitForSettle;
-        while (t2.get() < goal);
-        //tilt.set(DoubleSolenoid.Value.kReverse);
-        //goal = t2.get() + .75;
-        //while (t2.get() < goal);
-        sol3.set(DoubleSolenoid.Value.kReverse);
-        sol1.set(DoubleSolenoid.Value.kReverse);
-        sol2.set(DoubleSolenoid.Value.kReverse);
-        goal = t2.get() + a_fireTime;
-        while (t2.get() < goal);
-        sol3.set(DoubleSolenoid.Value.kForward);
-        sol1.set(DoubleSolenoid.Value.kForward);
-        sol2.set(DoubleSolenoid.Value.kForward);
+        try
+        {
+            t2.reset();
+            t2.start();
+            frontLeft.set(-a_movementSpeed);
+            frontRight.set(a_movementSpeed);
+            backRight.set(a_movementSpeed);
+            backLeft.set(-a_movementSpeed);
+            while (t2.get() < a_driveTime)
+                Thread.sleep(10);
+            frontLeft.set(0);
+            frontRight.set(0);
+            backRight.set(0);
+            backLeft.set(0);
+            double goal = t2.get() + a_waitForSettle;
+            while (t2.get() < goal)
+                Thread.sleep(10);
+            //tilt.set(DoubleSolenoid.Value.kReverse);
+            //goal = t2.get() + .75;
+            //while (t2.get() < goal);
+            sol3.set(DoubleSolenoid.Value.kReverse);
+            sol1.set(DoubleSolenoid.Value.kReverse);
+            sol2.set(DoubleSolenoid.Value.kReverse);
+            goal = t2.get() + a_fireTime;
+            while (t2.get() < goal)
+                Thread.sleep(10);
+            sol3.set(DoubleSolenoid.Value.kForward);
+            sol1.set(DoubleSolenoid.Value.kForward);
+            sol2.set(DoubleSolenoid.Value.kForward);
+        }
+        catch (Exception e)
+        {
+            Utilities.debug("RobotTemplate.autonomous1(). Thread interrupted while sleeping.", DEBUG);
+            return;
+        }
     }
 
-    public void autonomous2()
+    public void autonomous2() //autonomous with vision.
     {
-        t2.reset();
-        t2.start();
-        frontLeft.set(-a_movementSpeed);
-        frontRight.set(a_movementSpeed);
-        backRight.set(a_movementSpeed);
-        backLeft.set(-a_movementSpeed);
-        while (t2.get() < a_driveTime);
-        frontLeft.set(0);
-        frontRight.set(0);
-        backRight.set(0);
-        backLeft.set(0);
-        double goal = t2.get() + a_waitForSettle;
-        while (t2.get() < goal);
-        //tilt.set(DoubleSolenoid.Value.kReverse);
-        //goal = t2.get() + .75;
-        //while (t2.get() < goal);
-        sol3.set(DoubleSolenoid.Value.kReverse);
-        sol1.set(DoubleSolenoid.Value.kReverse);
-        sol2.set(DoubleSolenoid.Value.kReverse);
-        goal = t2.get() + a_fireTime;
-        while (t2.get() < goal);
-        sol3.set(DoubleSolenoid.Value.kForward);
-        sol1.set(DoubleSolenoid.Value.kForward);
-        sol2.set(DoubleSolenoid.Value.kForward);
+        try
+        {
+            t2.reset();
+            t2.start();
+            frontLeft.set(-a_movementSpeed);
+            frontRight.set(a_movementSpeed);
+            backRight.set(a_movementSpeed);
+            backLeft.set(-a_movementSpeed);
+            while (t2.get() < a_driveTime)
+                Thread.sleep(10);
+            frontLeft.set(0);
+            frontRight.set(0);
+            backRight.set(0);
+            backLeft.set(0);
+            double goal = t2.get() + a_waitForSettle;
+            while (t2.get() < goal)
+                Thread.sleep(10);
+            double timed = t2.get() + a_visionTimeout;
+            while (timed > t2.get() && !GoalDetected)
+                Thread.sleep(10);
+            //tilt.set(DoubleSolenoid.Value.kReverse);
+            //goal = t2.get() + .75;
+            //while (t2.get() < goal);
+            sol3.set(DoubleSolenoid.Value.kReverse);
+            sol1.set(DoubleSolenoid.Value.kReverse);
+            sol2.set(DoubleSolenoid.Value.kReverse);
+            goal = t2.get() + a_fireTime;
+            while (t2.get() < goal)
+                Thread.sleep(10);
+            sol3.set(DoubleSolenoid.Value.kForward);
+            sol1.set(DoubleSolenoid.Value.kForward);
+            sol2.set(DoubleSolenoid.Value.kForward);
+        }
+        catch (Exception e)
+        {
+            Utilities.debug("RobotTemplate.autonomous2(). Thread interrupted while sleeping.", DEBUG);
+            return;
+        }
     }
 
-    public void autonomous3()
+    public void autonomous3() //autonomous with out shoot.
     {
-        t2.reset();
-        t2.start();
-        frontLeft.set(-a_movementSpeed);
-        frontRight.set(a_movementSpeed);
-        backRight.set(a_movementSpeed);
-        backLeft.set(-a_movementSpeed);
-        while (t2.get() < a_driveTime);
-        frontLeft.set(0);
-        frontRight.set(0);
-        backRight.set(0);
-        backLeft.set(0);
-        double goal = t2.get() + a_waitForSettle;
-        while (t2.get() < goal);
-        //tilt.set(DoubleSolenoid.Value.kReverse);
-        //goal = t2.get() + .75;
-        //while (t2.get() < goal);
-        sol3.set(DoubleSolenoid.Value.kReverse);
-        sol1.set(DoubleSolenoid.Value.kReverse);
-        sol2.set(DoubleSolenoid.Value.kReverse);
-        goal = t2.get() + a_fireTime;
-        while (t2.get() < goal);
-        sol3.set(DoubleSolenoid.Value.kForward);
-        sol1.set(DoubleSolenoid.Value.kForward);
-        sol2.set(DoubleSolenoid.Value.kForward);
+        try
+        {
+            t2.reset();
+            t2.start();
+            frontLeft.set(-a_movementSpeed);
+            frontRight.set(a_movementSpeed);
+            backRight.set(a_movementSpeed);
+            backLeft.set(-a_movementSpeed);
+            while (t2.get() < a_driveTime)
+                Thread.sleep(10);
+            frontLeft.set(0);
+            frontRight.set(0);
+            backRight.set(0);
+            backLeft.set(0);
+        }
+        catch (Exception e)
+        {
+            Utilities.debug("RobotTemplate.autonomous3(). Thread interrupted while sleeping. Probably closed down by the FCS", DEBUG);
+            return;
+        }
     }
 
     public void disabled()
@@ -527,6 +549,7 @@ public class RobotTemplate extends SimpleRobot
             a_fireTime = Variables.getDouble("a_fireTime");
             intakeSpeed = Variables.getDouble("intakeSpeed") == 0 ? .5 : Variables.getDouble("intakeSpeed");
             outtakeSpeed = Variables.getDouble("outtakeSpeed") == 0 ? -1 : Variables.getDouble("outtakeSpeed");
+            a_visionTimeout = Variables.getDouble("a_visionTimeout") == 0 ? -1 : Variables.getDouble("a_VisionTimeout");
         }
         catch (Exception e)
         {

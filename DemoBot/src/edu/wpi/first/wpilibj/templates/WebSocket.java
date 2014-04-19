@@ -23,13 +23,13 @@ public class WebSocket
     InputStream is;
     OutputStream os;
     String key;
-    WebServerClean.ConnectionHandler conHan;
+    WebServer.ConnectionHandler conHan;
 
     Timer writeTimer = new Timer();
     double lastWriteTime = 0;
     double updateTime = .5;
 
-    public WebSocket(WebServerClean.ConnectionHandler conHan, SocketConnection s, InputStream is, PrintStream os, String key)
+    public WebSocket(WebServer.ConnectionHandler conHan, SocketConnection s, InputStream is, PrintStream os, String key)
     {
         this.conHan = conHan;
         this.s = s;
@@ -250,6 +250,7 @@ public class WebSocket
     {
         try
         {
+            //STATUS THREAD
             if (conHan.file.equalsIgnoreCase("/websockets/status"))
             {
                 Thread writeThread = new Thread()
@@ -280,6 +281,8 @@ public class WebSocket
                 };
                 writeThread.start();
             }
+            //STATUS THREAD
+            //VISION THREAD
             if (conHan.file.equalsIgnoreCase("/websockets/vision"))
             {
 
@@ -294,6 +297,23 @@ public class WebSocket
                 };
                 readThread.start();
             }
+            //VISION THREAD
+            //DEBUG THREAD
+            if (conHan.file.equalsIgnoreCase("/websockets/debug"))
+            {
+
+                Thread debugThread = new Thread()
+                {
+                    public void run()
+                    {
+                        while (connected)
+                            processDebugWrite();
+                        System.out.println("Closing Read Thread");
+                    }
+                };
+                debugThread.start();
+            }
+            //DEBUG THREAD
         }
         catch (Exception e)
         {
@@ -345,4 +365,13 @@ public class WebSocket
         }
     }
 
+    public void processDebugWrite()
+    {
+        if (writeTimer.get() > lastWriteTime + updateTime)
+        {
+            lastWriteTime = writeTimer.get();
+            StringBuffer sb = new StringBuffer();
+            writeData(sb.toString());
+        }
+    }
 }
