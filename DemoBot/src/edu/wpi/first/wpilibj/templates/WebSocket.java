@@ -359,7 +359,8 @@ public class WebSocket
             sb.append(",\"time\": ").append(DriverStation.getInstance().getMatchTime());
             sb.append(",\"alliance\": \"").append(DriverStation.getInstance().getAlliance().name).append("\"");
             sb.append(",\"position\": \"").append(DriverStation.getInstance().getLocation()).append("\"");
-            sb.append(",\"compressor\": \"").append(RobotTemplate.comp.enabled()).append("\"");
+            sb.append(",\"compressor\": \"").append(RobotTemplate.comp.getPressureSwitchValue()).append("\"");
+            sb.append(",\"compressorEnabled\": \"").append(RobotTemplate.comp.enabled()).append("\"");
             sb.append("}");
             writeData(sb.toString());
         }

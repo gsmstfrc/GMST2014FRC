@@ -132,6 +132,18 @@ public class RobotTemplate extends SimpleRobot
             double voltage = DriverStation.getInstance().getEnhancedIO().getAnalogIn(1);
             autonomousSetting = (int) Math.ceil(voltage / segments) == 0 ? 1 : (int) Math.ceil(voltage / segments);
             outtakeSpeed = -((double) DriverStation.getInstance().getEnhancedIO().getAnalogIn(2) / 3.3);
+
+            if (DriverStation.getInstance().getEnhancedIO().getDigital(8))
+            {
+                comp.start();
+            }
+            else
+            {
+                comp.stop();
+            }
+
+            DriverStation.getInstance().getEnhancedIO().setDigitalOutput(9, comp.getPressureSwitchValue());
+
             if (GoalDetected)
             {
                 DriverStation.getInstance().getEnhancedIO().setDigitalOutput(13, false);
@@ -496,7 +508,7 @@ public class RobotTemplate extends SimpleRobot
             while (t2.get() < goal)
                 Thread.sleep(10);
             double timed = t2.get() + a_visionTimeout;
-            while (timed > t2.get() && !GoalDetected)
+            while ((timed > t2.get()) && !GoalDetected)
                 Thread.sleep(10);
             //tilt.set(DoubleSolenoid.Value.kReverse);
             //goal = t2.get() + .75;
