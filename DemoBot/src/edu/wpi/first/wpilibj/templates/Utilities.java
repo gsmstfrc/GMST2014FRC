@@ -26,6 +26,7 @@ public class Utilities
 
     public static void init()
     {
+        debugFileInitialized = true;
         DEBUG = Variables.getBoolean("w_UtiltiesDebug");
         dontSpamLargeLog = Variables.getBoolean("w_UtilitiesDontSpamLargeLog");
     }

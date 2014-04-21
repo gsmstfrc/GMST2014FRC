@@ -31,14 +31,14 @@ public class Variables
 
     public static boolean exists(String key)
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
         return variables.contains(key);
     }
 
     public static void setVariable(String varName, int i)
     {
-        hasLoaded();
+        //hasLoaded();
         if (variables.containsKey(varName))
             variables.remove(varName);
         variables.put(varName, new Integer(i).toString());
@@ -46,7 +46,7 @@ public class Variables
 
     public static void setVariable(String varName, double db)
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
 
         if (variables.containsKey(varName))
@@ -56,7 +56,7 @@ public class Variables
 
     public static void setVariable(String varName, boolean bool)
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
         if (variables.containsKey(varName))
             variables.remove(varName);
@@ -65,7 +65,7 @@ public class Variables
 
     public static int getInt(String varName)
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
         if (!variables.containsKey(varName))
             variables.put(varName, "0");
@@ -74,7 +74,7 @@ public class Variables
 
     public static double getDouble(String varName)
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
         while (fileOperation)
             Utilities.sleepThread(20);
@@ -85,7 +85,7 @@ public class Variables
 
     public static boolean getBoolean(String varName)
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
         if (!variables.containsKey(varName))
             variables.put(varName, "FALSE");
@@ -94,7 +94,7 @@ public class Variables
 
     public static void save()
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
         fileOperation = true;
         try
@@ -123,7 +123,7 @@ public class Variables
 
     public static void load()
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
         fileOperation = true;
         try
@@ -164,14 +164,14 @@ public class Variables
 
     public static Hashtable getTable()
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
         return variables;
     }
 
     public static void setTable(Hashtable table)
     {
-        hasLoaded();
+        //hasLoaded();
         waitForFileIO();
         variables = table;
     }
@@ -179,7 +179,7 @@ public class Variables
     public static void updateTableWithTable(Hashtable table)
     {
         waitForFileIO();
-        hasLoaded();
+        //hasLoaded();
         try
         {
             fileOperation = true;
