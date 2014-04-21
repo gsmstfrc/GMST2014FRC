@@ -7,6 +7,7 @@ package edu.wpi.first.wpilibj.templates;
 
 import com.sun.squawk.microedition.io.FileConnection;
 import java.io.InputStream;
+import java.util.Hashtable;
 import java.util.Vector;
 import javax.microedition.io.Connector;
 
@@ -22,6 +23,12 @@ public class Utilities
     static StringBuffer debug = new StringBuffer(256);
     static boolean dontSpamLargeLog = true;
     static int BUFFER_SIZE = 4096;
+
+    public static void init()
+    {
+        DEBUG = Variables.getBoolean("w_UtiltiesDebug");
+        dontSpamLargeLog = Variables.getBoolean("w_UtilitiesDontSpamLargeLog");
+    }
 
     public static void saveStringToFile(String fileName, String toSave)
     {
@@ -52,6 +59,8 @@ public class Utilities
 
     public static String stringFromFile(String fileName2)
     {
+        if (!debugFileInitialized)
+            init();
         StringBuffer sb = new StringBuffer(BUFFER_SIZE);
         FileConnection connection = null;
         while (fileOpen)
@@ -113,6 +122,8 @@ public class Utilities
 
     public static String stringReplace(String original, String searchString, String replaceString)
     {
+        if (!debugFileInitialized)
+            init();
         if (replaceString == null)
             replaceString = "";
 
@@ -141,6 +152,8 @@ public class Utilities
 
     public static String[] splitString(String original, String separator)
     {
+        if (!debugFileInitialized)
+            init();
         Vector nodes = new Vector();
         // Parse nodes into vector
         int index = original.indexOf(separator);
@@ -169,6 +182,8 @@ public class Utilities
 
     public static String[] splitStringOnce(String original, String separator)
     {
+        if (!debugFileInitialized)
+            init();
         String[] result = new String[2];
         int index = original.indexOf(separator);
         //Utilities.debugLine("Utilities.splitStringOnce(" + original + "," + separator + "): Index = " + index, DEBUG);
@@ -177,6 +192,20 @@ public class Utilities
         //Utilities.debugLine(result[0], DEBUG);
         //Utilities.debugLine(" " + result[1], DEBUG);
         return result;
+    }
+
+    public static void sleepThread(int millis)
+    {
+        if (!debugFileInitialized)
+            init();
+        try
+        {
+            Thread.sleep(millis);
+        }
+        catch (InterruptedException ex)
+        {
+            ex.printStackTrace();
+        }
     }
 
     public static void debug(byte[] byteArray, boolean doPrint)
@@ -211,6 +240,8 @@ public class Utilities
 
     public static void debug(String message, boolean doPrint)
     {
+        if (!debugFileInitialized)
+            init();
         if (doPrint)
         {
             if (!dontSpamLargeLog)

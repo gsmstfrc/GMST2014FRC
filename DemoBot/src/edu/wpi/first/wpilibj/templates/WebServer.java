@@ -136,12 +136,6 @@ public class WebServer implements Runnable
 
             String form = "";//"<form method=\"POST\" action=\"/\">";
             Hashtable variables = Variables.getTable();
-            if (variables.get("testMe") == null)
-                variables.put("testMe", "Test1");
-            if (variables.get("a_doShit") == null)
-                variables.put("a_doShit", "10");
-            if (variables.get("finalTest") == null)
-                variables.put("finalTest", "asdf");
 
             Enumeration keys = variables.keys();
 

@@ -346,7 +346,7 @@ public class WebSocket
             sb.append(",\"backLeftMotor\": ").append(RobotTemplate.backLeft.get());
             sb.append(",\"backRightMotor\": ").append(RobotTemplate.backRight.get());
             sb.append(",\"intake\": ").append(RobotTemplate.intake2.get());
-            sb.append(",\"tilt\": ").append(RobotTemplate.tilt.get().value);
+            sb.append(",\"tilt\": ").append(RobotTemplate.tilted);
             sb.append(",\"leftSolenoid\": ").append(RobotTemplate.sol3.get().value);
             sb.append(",\"middleSolenoid\": ").append(RobotTemplate.sol2.get().value);
             sb.append(",\"rightSolenoid\": ").append(RobotTemplate.sol1.get().value);

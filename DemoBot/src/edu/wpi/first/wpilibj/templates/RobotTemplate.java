@@ -79,7 +79,6 @@ public class RobotTemplate extends SimpleRobot
             //updater.start();
             Thread piUpdater = new Thread(new WebServer());
             piUpdater.start();
-            Variables.load();
             Thread switchpanel = new Thread()
             {
                 public void run()
@@ -116,7 +115,7 @@ public class RobotTemplate extends SimpleRobot
 //            };
             //averager.setPriority(Thread.MIN_PRIORITY);
             //averager.start();
-            reloadVariables();
+            //reloadVariables(); Lets not do this so that the variables class has time to finish loading first bro.
         }
         catch (Exception e)
         {
@@ -130,10 +129,9 @@ public class RobotTemplate extends SimpleRobot
     {
         try
         {
-
             double voltage = DriverStation.getInstance().getEnhancedIO().getAnalogIn(1);
             autonomousSetting = (int) Math.ceil(voltage / segments) == 0 ? 1 : (int) Math.ceil(voltage / segments);
-
+            outtakeSpeed = -((double) DriverStation.getInstance().getEnhancedIO().getAnalogIn(2) / 3.3);
             if (GoalDetected)
             {
                 DriverStation.getInstance().getEnhancedIO().setDigitalOutput(13, false);
@@ -168,9 +166,9 @@ public class RobotTemplate extends SimpleRobot
         }
     }
     //Customizable values
-    public double maxXSpeed = .5;//.1; old was 1
-    public double maxYSpeed = .5;//.4; old was 1
-    public double maxTSpeed = .4;//.4; wold was .5
+    public double maxXSpeed = 1;//.1; old was 1
+    public double maxYSpeed = 1;//.4; old was 1
+    public double maxTSpeed = 1;//.4; wold was .5
 
     double x;
     double y;
@@ -182,135 +180,6 @@ public class RobotTemplate extends SimpleRobot
 
     double accelerationValue = .02;
 
-    public static double sign(double value)
-    {
-        return (value >= 0) ? 1 : -1;
-    }
-
-    boolean foldedOut = false;
-    boolean releasedToggle = true;
-
-    Timer t4 = new Timer();
-    double goal;
-    double THREE_HOLD = .1;
-    double TWO_HOLD = .1;
-    double ONE_HOLD = .1;
-
-    public void pneumaticControl()
-    {
-
-        if (joystick.getRawButton(3))
-        {
-            t4.start();
-            //tilt.set(DoubleSolenoid.Value.kReverse);
-            sol3.set(DoubleSolenoid.Value.kReverse);
-            sol1.set(DoubleSolenoid.Value.kReverse);
-            sol2.set(DoubleSolenoid.Value.kReverse);
-            while (t4.get() < THREE_HOLD);
-            t4.stop();
-            t4.reset();
-            sol3.set(DoubleSolenoid.Value.kForward);
-            sol1.set(DoubleSolenoid.Value.kForward);
-            sol2.set(DoubleSolenoid.Value.kForward);
-            while (joystick.getRawButton(3));
-        }
-
-        else if (joystick.getRawButton(4))
-        {
-            t4.start();
-            //tilt.set(DoubleSolenoid.Value.kReverse);
-            sol3.set(DoubleSolenoid.Value.kReverse);
-            sol1.set(DoubleSolenoid.Value.kReverse);
-            sol2.set(DoubleSolenoid.Value.kReverse);
-            while (t4.get() < TWO_HOLD);
-            t4.stop();
-            t4.reset();
-            sol3.set(DoubleSolenoid.Value.kForward);
-            sol1.set(DoubleSolenoid.Value.kForward);
-            sol2.set(DoubleSolenoid.Value.kForward);
-            while (joystick.getRawButton(4));
-        }
-
-        else if (joystick.getRawButton(1))
-        {
-            t4.start();
-            //tilt.set(DoubleSolenoid.Value.kReverse);
-            sol3.set(DoubleSolenoid.Value.kReverse);
-            sol1.set(DoubleSolenoid.Value.kReverse);
-            sol2.set(DoubleSolenoid.Value.kReverse);
-            while (t4.get() < ONE_HOLD);
-            t4.stop();
-            t4.reset();
-            sol3.set(DoubleSolenoid.Value.kForward);
-            sol1.set(DoubleSolenoid.Value.kForward);
-            sol2.set(DoubleSolenoid.Value.kForward);
-            while (joystick.getRawButton(1));
-        }
-//
-//        else if (joystick.getRawButton(1))
-//        {
-//            //tilt.set(DoubleSolenoid.Value.kReverse);
-//            sol3.set(DoubleSolenoid.Value.kForward);
-//            sol1.set(DoubleSolenoid.Value.kReverse);
-//            sol2.set(DoubleSolenoid.Value.kReverse);
-//        }
-        else if (joystick.getRawButton(2))
-        {
-            //tilt.set(DoubleSolenoid.Value.kReverse);
-            sol3.set(DoubleSolenoid.Value.kReverse);
-            sol1.set(DoubleSolenoid.Value.kReverse);
-            sol2.set(DoubleSolenoid.Value.kReverse);
-        }
-        else
-        {
-            sol3.set(DoubleSolenoid.Value.kForward);
-            sol1.set(DoubleSolenoid.Value.kForward);
-            sol2.set(DoubleSolenoid.Value.kForward);
-        }
-        if (joystick.getRawButton(7))
-        {
-            tilt.set(DoubleSolenoid.Value.kReverse);
-        }
-        else if (joystick.getRawButton(5))
-        {
-            tilt.set(DoubleSolenoid.Value.kForward);
-        }
-        else
-        {
-            tilt.set(DoubleSolenoid.Value.kOff);
-        }
-    }
-
-    public static double intakeSpeed;
-    public static double outtakeSpeed;
-
-    public void intakeControl()
-    {
-
-        if (joystick.getRawButton(6)) //intake
-        {
-            intake.set(.5);
-            intake2.set(.5);
-        }
-
-        else if (joystick.getRawButton(8)) //out take
-        {
-            intake.set(-1);
-            intake2.set(-1);
-        }
-
-        else
-        {
-            intake.set(0);
-            intake2.set(0);
-        }
-
-    }
-
-    boolean useOldCode = false;
-    public static double multiplier = 1;
-
-    //@Override not supported
     public void driveControl()
     {
 
@@ -385,6 +254,163 @@ public class RobotTemplate extends SimpleRobot
             backLeft.set(targetBackLeft);
         }
     }
+
+    public static double sign(double value)
+    {
+        return (value >= 0) ? 1 : -1;
+    }
+
+    public static boolean tilted = false;
+    boolean releasedToggle = true;
+
+    Timer t4 = new Timer();
+    double goal;
+    double THREE_HOLD = .1;
+    double TWO_HOLD = .1;
+    double ONE_HOLD = .1;
+
+    public void pneumaticControl()
+    {
+
+        if (joystick.getRawButton(3))
+        {
+            try
+            {
+                t4.start();
+                //tilt.set(DoubleSolenoid.Value.kReverse);
+                sol3.set(DoubleSolenoid.Value.kReverse);
+                sol1.set(DoubleSolenoid.Value.kReverse);
+                sol2.set(DoubleSolenoid.Value.kReverse);
+                while (t4.get() < THREE_HOLD)
+                    Thread.sleep(20);;
+                t4.stop();
+                t4.reset();
+                sol3.set(DoubleSolenoid.Value.kForward);
+                sol1.set(DoubleSolenoid.Value.kForward);
+                sol2.set(DoubleSolenoid.Value.kForward);
+                while (joystick.getRawButton(3))
+                    Thread.sleep(20);;
+            }
+            catch (InterruptedException ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+
+        else if (joystick.getRawButton(4))
+        {
+            try
+            {
+                t4.start();
+                //tilt.set(DoubleSolenoid.Value.kReverse);
+                sol3.set(DoubleSolenoid.Value.kReverse);
+                sol1.set(DoubleSolenoid.Value.kReverse);
+                sol2.set(DoubleSolenoid.Value.kReverse);
+                while (t4.get() < TWO_HOLD)
+                    Thread.sleep(20);;
+                t4.stop();
+                t4.reset();
+                sol3.set(DoubleSolenoid.Value.kForward);
+                sol1.set(DoubleSolenoid.Value.kForward);
+                sol2.set(DoubleSolenoid.Value.kForward);
+                while (joystick.getRawButton(4))
+                    Thread.sleep(20);;
+            }
+            catch (InterruptedException ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+
+        else if (joystick.getRawButton(1))
+        {
+            try
+            {
+                t4.start();
+                //tilt.set(DoubleSolenoid.Value.kReverse);
+                sol3.set(DoubleSolenoid.Value.kReverse);
+                sol1.set(DoubleSolenoid.Value.kReverse);
+                sol2.set(DoubleSolenoid.Value.kReverse);
+                while (t4.get() < ONE_HOLD)
+                    Thread.sleep(20);;
+                t4.stop();
+                t4.reset();
+                sol3.set(DoubleSolenoid.Value.kForward);
+                sol1.set(DoubleSolenoid.Value.kForward);
+                sol2.set(DoubleSolenoid.Value.kForward);
+                while (joystick.getRawButton(1))
+                    Thread.sleep(20);;
+            }
+//
+//        else if (joystick.getRawButton(1))
+//        {
+//            //tilt.set(DoubleSolenoid.Value.kReverse);
+//            sol3.set(DoubleSolenoid.Value.kForward);
+//            sol1.set(DoubleSolenoid.Value.kReverse);
+//            sol2.set(DoubleSolenoid.Value.kReverse);
+//        }
+            catch (InterruptedException ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+        else if (joystick.getRawButton(2))
+        {
+            //tilt.set(DoubleSolenoid.Value.kReverse);
+            sol3.set(DoubleSolenoid.Value.kReverse);
+            sol1.set(DoubleSolenoid.Value.kReverse);
+            sol2.set(DoubleSolenoid.Value.kReverse);
+        }
+        else
+        {
+            sol3.set(DoubleSolenoid.Value.kForward);
+            sol1.set(DoubleSolenoid.Value.kForward);
+            sol2.set(DoubleSolenoid.Value.kForward);
+        }
+        if (joystick.getRawButton(7))
+        {
+            tilt.set(DoubleSolenoid.Value.kReverse);
+            tilted = true;
+        }
+        else if (joystick.getRawButton(5))
+        {
+            tilt.set(DoubleSolenoid.Value.kForward);
+            tilted = false;
+        }
+        else
+        {
+            tilt.set(DoubleSolenoid.Value.kOff);
+        }
+    }
+
+    public static double intakeSpeed = .5;
+    public static double outtakeSpeed = -1;
+
+    public void intakeControl()
+    {
+
+        if (joystick.getRawButton(6)) //intake
+        {
+            intake.set(intakeSpeed);
+            intake2.set(intakeSpeed);
+        }
+
+        else if (joystick.getRawButton(8)) //out take
+        {
+            intake.set(outtakeSpeed);
+            intake2.set(outtakeSpeed);
+        }
+
+        else
+        {
+            intake.set(0);
+            intake2.set(0);
+        }
+
+    }
+
+    boolean useOldCode = false;
+    public static double multiplier = 1;
 
     Timer t2 = new Timer();
 
@@ -531,6 +557,7 @@ public class RobotTemplate extends SimpleRobot
 
     public void reloadVariables()
     {
+        Variables.load();
         try
         {
             TWO_HOLD = Variables.getDouble("TWOHOLD");
@@ -539,17 +566,18 @@ public class RobotTemplate extends SimpleRobot
 
             accelerationValue = Variables.getDouble("accelerationValue");
 
-            maxXSpeed = Variables.getDouble("maxXSpeed");
-            maxYSpeed = Variables.getDouble("maxYSpeed");
-            maxTSpeed = Variables.getDouble("maxTSpeed");
+            maxXSpeed = Variables.getDouble("maxXSpeed") == 0 ? 1 : Variables.getDouble("maxXSpeed");
+            maxYSpeed = Variables.getDouble("maxYSpeed") == 0 ? 1 : Variables.getDouble("maxYSpeed");
+            maxTSpeed = Variables.getDouble("maxTSpeed") == 0 ? 1 : Variables.getDouble("maxTSpeed");
 
-            a_movementSpeed = Variables.getDouble("a_movementSpeed");
+            a_movementSpeed = Variables.getDouble("a_movementSpeed") == 0 ? .02 : Variables.getDouble("a_movementSpeed");
             a_driveTime = Variables.getDouble("a_driveTime");
             a_waitForSettle = Variables.getDouble("a_waitForSettle");
             a_fireTime = Variables.getDouble("a_fireTime");
             intakeSpeed = Variables.getDouble("intakeSpeed") == 0 ? .5 : Variables.getDouble("intakeSpeed");
             outtakeSpeed = Variables.getDouble("outtakeSpeed") == 0 ? -1 : Variables.getDouble("outtakeSpeed");
             a_visionTimeout = Variables.getDouble("a_visionTimeout") == 0 ? -1 : Variables.getDouble("a_VisionTimeout");
+
         }
         catch (Exception e)
         {

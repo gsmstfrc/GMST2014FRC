@@ -3,9 +3,10 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/Users/john/repos/FRC/MainCode/DemoBot/src/edu/wpi/first/wpilibj/templates/WebServerClean.java</file>
             <file>file:/Users/john/repos/FRC/MainCode/DemoBot/src/edu/wpi/first/wpilibj/templates/WebSocket.java</file>
             <file>file:/Users/john/repos/FRC/MainCode/DemoBot/src/edu/wpi/first/wpilibj/templates/RobotTemplate.java</file>
+            <file>file:/Users/john/repos/FRC/MainCode/DemoBot/src/edu/wpi/first/wpilibj/templates/Utilities.java</file>
+            <file>file:/Users/john/repos/FRC/MainCode/DemoBot/src/edu/wpi/first/wpilibj/templates/WebServer.java</file>
             <file>file:/Users/john/repos/FRC/MainCode/DemoBot/src/edu/wpi/first/wpilibj/templates/Variables.java</file>
         </group>
     </open-files>
