@@ -9,10 +9,12 @@ public class Variables
 {
 
     private static Hashtable variables = new Hashtable();
+    
+    private static boolean fileOperation = false;
 
     public static String sortedKeys[] = new String[]
     {
-        "maxXSpeed", "maxYSpeed", "maxTSpeed", "ONEHOLD", "TWOHOLD", "THREEHOLD", "accelerationValue", "intakeSpeed", "outtakeSpeed", "w_Port", "w_NetworkBufferSize", "w_DebugLog", "w_websocketUpdateInterval", "a_movementSpeed", "a_driveTime", "a_waitForSettle", "a_fireTime"
+        "maxXSpeed", "maxYSpeed", "maxTSpeed", "ONEHOLD", "TWOHOLD", "THREEHOLD", "accelerationValue", "intakeSpeed", "outtakeSpeed", "w_Port", "w_NetworkBufferSize", "w_DebugLog", "w_websocketUpdateInterval", "a_movementSpeed", "a_driveTime", "a_waitForSettle", "a_fireTime","a_visionTimeout"
     };
 
     public static boolean DEBUG = true;
